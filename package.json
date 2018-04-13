@@ -1,0 +1,17 @@
+{
+  "name": "slack-network-analysis",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/b-gran/slack-network-analysis.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/b-gran/slack-network-analysis/issues"
+  },
+  "homepage": "https://github.com/b-gran/slack-network-analysis#readme"
+}
