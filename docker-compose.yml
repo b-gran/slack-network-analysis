@@ -27,7 +27,6 @@ services:
 
   db:
     image: mongo:3.6
-    read_only: true
     volumes:
       - db:/data/db
 
