@@ -13,5 +13,8 @@
   "bugs": {
     "url": "https://github.com/b-gran/slack-network-analysis/issues"
   },
-  "homepage": "https://github.com/b-gran/slack-network-analysis#readme"
+  "homepage": "https://github.com/b-gran/slack-network-analysis#readme",
+  "dependencies": {
+    "axios": "^0.18.0"
+  }
 }
