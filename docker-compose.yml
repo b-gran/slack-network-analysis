@@ -16,14 +16,14 @@ services:
       - DATABASE_URL=postgres://postgres@db:5432/dev
     ports:
       - "8080:8080"
-      - "127.0.0.1:9229:9229" # V8 inspector
-      - "127.0.0.1:9230:9230" # V8 inspector
+      - "127.0.0.1:9259:9259" # V8 inspector
+      - "127.0.0.1:9260:9260" # V8 inspector
     volumes:
       - npm:/home/.npm/_cacache/
       - ./:/usr/src/app
 
     # Starts the server & watches for changes (with debugger support)
-    command: nodemon --inspect=0.0.0.0:9229 src/server.js
+    command: nodemon -i src/frontend/ --force-fork --verbose --inspect=0.0.0.0:9259 src/server.js
 
   db:
     image: mongo:3.6
