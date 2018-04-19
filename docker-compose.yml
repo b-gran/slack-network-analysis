@@ -13,7 +13,8 @@ services:
       - db
     environment:
       - PORT=8080
-      - DATABASE_URL=postgres://postgres@db:5432/dev
+      - DATABASE_URL=mongodb://db/sna
+      - SLACK_TOKEN=${SLACK_TOKEN}
     ports:
       - "8080:8080"
       - "127.0.0.1:9259:9259" # V8 inspector
