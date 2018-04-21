@@ -61,3 +61,12 @@ module.exports.traverseUsers = async () => {
   const realUsers = users.filter(user => !user.deleted && !user.is_bot)
   console.log(`GOT ${realUsers.length} USERS`)
 }
+
+// Return the teams stored by the application
+module.exports.getTeams = async () => {
+  return models.Team.find({})
+}
+
+module.exports.createTeam = async team => {
+  return (new models.Team(team)).save()
+}
