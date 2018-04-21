@@ -1,6 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import Head from 'next/head'
+import Link from 'next/link'
 
 import axios from 'axios'
 
@@ -130,10 +131,14 @@ const Index = observer(class _Index extends React.Component {
               <List component="nav">
                 {this.props.teams.map(team => (
                   <ListItem key={team.team} button>
-                    <ListItemText primary={team.team}/>
+                    <Link href={{ pathname: '/team', query: { team_id: team.team_id } }}>
+                      <ListItemText primary={team.team}/>
+                    </Link>
                   </ListItem>
                 ))}
               </List>
+
+              <Divider/>
 
               <CardContent>
                 <Button variant="raised" color="primary" onClick={() => showAddTeamModal()}>
