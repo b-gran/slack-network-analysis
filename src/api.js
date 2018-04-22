@@ -23,14 +23,38 @@ const SlackApi = token => ({
     })
   },
 
-  GetAllUsers () {
+  GetAllUsers ({ cursor } = {}) {
     return axios({
       url: 'https://slack.com/api/users.list',
       params: {
         token: token,
+        cursor: cursor,
       }
     })
-  }
+  },
+
+  GetAllPublicChannels ({ cursor } = {}) {
+    return axios({
+      url: 'https://slack.com/api/channels.list',
+      params: {
+        token: token,
+        limit: 0,
+        cursor: cursor,
+      }
+    })
+  },
+
+  GetMembersForChannel (channelId, { cursor } = {}) {
+    return axios({
+      url: 'https://slack.com/api/conversations.members',
+      params: {
+        token: token,
+        channel: channelId,
+        limit: 500,
+        cursor: cursor,
+      }
+    })
+  },
 })
 
 const slackApiForTeam = async team_id => {
@@ -104,3 +128,75 @@ module.exports.loadUsersForTeam = async team_id => {
   return await models.User.bulkWrite(updateOperations)
 }
 
+// Traverses all of the channels in the slack team
+module.exports.loadChannelsForTeam = async team_id => {
+  const { slack, team } = await slackApiForTeam(team_id)
+
+  const response = (await slack.GetAllPublicChannels()).data
+  const channels = response.channels
+
+  console.log('Channel length', channels.length)
+
+  // Separate API for fetching members of each channel
+  for (const channel of channels) {
+    const members = await followCursor(
+      cursor => slack.GetMembersForChannel(channel.id, { cursor: cursor }),
+      (result, response) => result.concat(response.members)
+    )
+    channel.members = members
+  }
+
+  // Create & update channels in bulk
+  // It would take ages to issue a bunch of findOneAndUpdates()
+  const updateOperations = channels.map(channel => ({
+      updateOne: {
+        filter: {
+          channel_id: channel.id,
+        },
+        update: {
+          channel_id: channel.id,
+          name: channel.name,
+          members: channel.members,
+          slack_data: channel,
+          team: team._id,
+        },
+        upsert: true,
+        setDefaultsOnInsert: true,
+      }
+    }
+  ))
+
+  return await models.Channel.bulkWrite(updateOperations)
+}
+
+const isNonEmptyString = R.allPass([
+  x => typeof x === 'string',
+  R.complement(R.isEmpty),
+])
+
+const getNextCursor = R.path(['response_metadata', 'next_cursor'])
+
+// Keeps making a Slack api request with new cursors until all of the data
+// has been retrieved.
+// Accumulates the results with the supplied reducer function.
+//
+// makeRequestWithCursor() is called with a nil value for the first call.
+// makeRequestWithCursor() must return a raw axios request
+//
+// accumulate() is called with:
+//    accumulate(resultSoFar, currentResponseBody)
+async function followCursor (makeRequestWithCursor, accumulate) {
+  let result = []
+
+  let moreMessages = true
+  let nextCursor = undefined
+  while (moreMessages) {
+    const response = (await makeRequestWithCursor(nextCursor)).data
+    result = accumulate(result, response)
+
+    nextCursor = getNextCursor(response)
+    moreMessages = isNonEmptyString(nextCursor)
+  }
+
+  return result
+}
