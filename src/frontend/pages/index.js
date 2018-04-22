@@ -20,6 +20,7 @@ import { observable, action } from 'mobx'
 import { PropTypes as MobxPropTypes, observer, inject, Provider } from 'mobx-react'
 
 import { SERVER_URL } from '../config'
+import * as MProps from '../props'
 
 // Resets
 css.global('body', { margin: 0 })
@@ -80,12 +81,7 @@ const Index = observer(class _Index extends React.Component {
   static displayName = 'Index'
 
   static propTypes = {
-    teams: MobxPropTypes.observableArrayOf(PropTypes.shape({
-      token: PropTypes.string.isRequired,
-      url: PropTypes.string.isRequired,
-      team: PropTypes.string.isRequired,
-      team_id: PropTypes.string.isRequired,
-    })).isRequired,
+    teams: MobxPropTypes.observableArrayOf(MProps.Team).isRequired,
     isLoaded: PropTypes.bool,
 
     showAddTeamModal: PropTypes.bool,
@@ -93,10 +89,7 @@ const Index = observer(class _Index extends React.Component {
       token: PropTypes.string.isRequired,
     }).isRequired,
 
-    error: PropTypes.oneOfType([
-      PropTypes.string,
-      PropTypes.object,
-    ]),
+    error: MProps.error,
   }
 
   componentDidMount () {
