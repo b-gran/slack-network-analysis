@@ -168,21 +168,10 @@ module.exports.loadMessagesForTeam = async team_id => {
 const loadChannelMessagesForTeam = module.exports.loadChannelMessagesForTeam = async (team_id, channelId, start, end) => {
   const { slack } = await slackApiForTeam(team_id)
 
-  let tries = 3
-  let result = null
-  while (result === null && tries > 0) {
-    try {
-      result = await followCursor(
-        cursor => slack.GetConversationHistory(channelId, { cursor, start, end }),
-        (result, response) => arrayConcatMutate(result, response.messages)
-      )
-    } catch (err) {
-      console.warn('Rate limited. Waiting 30 seconds...')
-      tries = tries - 1
-      await delay(30000)
-    }
-  }
-  return result || Promise.reject(new Error(`Failed to fetch messages for channel ${channelId}`))
+  return await followCursor(
+    cursor => slack.GetConversationHistory(channelId, { cursor, start, end }),
+    (result, response) => arrayConcatMutate(result, response.messages)
+  )
 }
 
 // Traverses all of the users in the slack team
@@ -278,14 +267,37 @@ async function followCursor (makeRequestWithCursor, accumulate) {
   let moreMessages = true
   let nextCursor = undefined
   while (moreMessages) {
-    const response = (await makeRequestWithCursor(nextCursor)).data
-    result = accumulate(result, response)
+    const response = await retryWithBackoff(() => makeRequestWithCursor(nextCursor))
+    result = accumulate(result, response.data)
 
     nextCursor = getNextCursor(response)
     moreMessages = isNonEmptyString(nextCursor)
   }
 
   return result
+}
+
+async function retryWithBackoff (operation, retries = 7) {
+  const failed = Symbol('failed')
+
+  let tries = retries
+  let result = failed
+  let lastError = null
+  while (result === failed && tries > 0) {
+    try {
+      result = await operation()
+    } catch (err) {
+      lastError = err
+
+      const duration = Math.pow(2, retries - tries)
+      console.warn(`Rate limited. Waiting ${duration} seconds...`)
+      tries = tries - 1
+      await delay(duration * 1000)
+    }
+  }
+  return result === failed
+    ? Promise.reject(lastError)
+    : result
 }
 
 // Concatenates dest to src, mutating src.
