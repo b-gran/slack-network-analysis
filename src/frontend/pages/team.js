@@ -20,6 +20,7 @@ import { css } from 'glamor'
 
 import { observable, action } from 'mobx'
 import { PropTypes as MobxPropTypes, observer, inject, Provider } from 'mobx-react'
+import * as R from 'ramda'
 
 import { mergeInitialState, SERVER_URL } from '../config'
 import * as MProps from '../props'
@@ -45,6 +46,16 @@ const getTeam = action(teamId => axios.get(`${SERVER_URL}/teams/${teamId}`)
   .catch(err => state.error = err)
 )
 
+const loadUserData = action(teamId => {
+  const loadUsers = axios.post(`${SERVER_URL}/users?team_id=${teamId}`)
+    .then(() => getTeam(teamId))
+
+  // noinspection JSIgnoredPromiseFromCall
+  getTeam(teamId)
+
+  return loadUsers
+})
+
 const Team = observer(class _Team extends React.Component {
   static displayName = 'Team'
 
@@ -54,7 +65,17 @@ const Team = observer(class _Team extends React.Component {
     error: MProps.error,
   }
 
+  teamUpdateTimer = null
+
+  componentWillUnmount () {
+    if (this.teamUpdateTimer) {
+      clearInterval(this.teamUpdateTimer)
+      this.teamUpdateTimer = null
+    }
+  }
+
   componentDidMount () {
+    this.teamUpdateTimer = setInterval(() => getTeam(Router.query.team_id), 5000)
     return getTeam(Router.query.team_id)
   }
   
@@ -97,6 +118,45 @@ const Team = observer(class _Team extends React.Component {
                   <Div margin="0 10px">
                     <FormLabel>URL</FormLabel>
                     <Typography variant="body2">{this.props.team.url}</Typography>
+                  </Div>
+                </Div>
+
+                <Div marginTop="20px">
+                  <Div margin="0 10px">
+                    <FormLabel>User Data</FormLabel>
+
+                    <Div display="flex" alignItems="center">
+                      <Div marginRight="10px">
+                        <FormLabel>
+                          <small>Has user data?</small>
+                        </FormLabel>
+                      </Div>
+                      <Typography
+                        variant="body2">{R.toString(this.props.team.user_data.has_user_data)}</Typography>
+                    </Div>
+
+                    {this.props.team.user_data.has_user_data && (
+                      <Div display="flex" alignItems="center">
+                        <Div marginRight="10px">
+                          <FormLabel>
+                            <small>Last fetched user data</small>
+                          </FormLabel>
+                        </Div>
+                        <Typography variant="body2">
+                          {new Date(this.props.team.user_data.last_fetched).toLocaleString()}
+                        </Typography>
+                      </Div>
+                    )}
+
+                    <Button
+                      variant="raised"
+                      color="primary"
+                      disabled={this.props.team.user_data.is_fetching}
+                      onClick={() => {
+                        return loadUserData(this.props.team.team_id)
+                      }} >
+                      Reload user data
+                    </Button>
                   </Div>
                 </Div>
               </Div>
