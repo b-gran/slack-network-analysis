@@ -42,6 +42,9 @@ const channelSchema = mongoose.Schema({
   slack_data: {
     type: Object,
   },
+
+  // Which team (within SNA) this channel belongs to
+  team: mongoose.SchemaTypes.ObjectId,
 })
 
 module.exports.Channel = mongoose.model('Channel', channelSchema)
