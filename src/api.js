@@ -77,25 +77,92 @@ module.exports.createTeam = async team => {
   return (new models.Team(team)).save()
 }
 
-// Traverses all of the messages in the time frame
-module.exports.loadChannelMessagesForTeam = async (team_id, channelId, start, end) => {
+const getChannels = module.exports.getChannels = async teamId => {
+  const team = await getTeamByTeamId(teamId)
+  return models.Channel.find({ team: team._id })
+}
+
+module.exports.getChannelByChannelId = async channelId => {
+  return models.Channel.find({ channel_id: channelId })
+}
+
+module.exports.loadMessagesForTeam = async team_id => {
+  const { team } = await slackApiForTeam(team_id)
+
+  const channels = (await getChannels(team_id)).slice(0, 10)
+
+  // Loading messages between 1 August 2017 and the present.
+  const start = new Date(2017, 7, 1)
+
+  console.log(`Loading messages for ${channels.length} channels...`)
+  let channelsRemaining = channels.length
+  const timer = setInterval(
+    () => console.log(`${channelsRemaining}/${channels.length} channels remaining to process...`),
+    2000
+  )
+
+  let writeFailures = 0
+  const saveMessages = Promise.resolve()
+
+  for (const channel of channels) {
+    const messages = await loadChannelMessagesForTeam(team_id, channel.channel_id, start)
+
+    // Create & update messages in bulk
+    // It would take ages to issue a bunch of findOneAndUpdates()
+    const updateOperations = messages.map(message => {
+      const id = message.user || message.bot_id
+      return ({
+          updateOne: {
+            filter: {
+              user_id: id,
+              ts: message.ts,
+              team: team._id,
+            },
+            update: {
+              user_id: id,
+              ts: message.ts,
+              text: message.text,
+              reactions: message.reactions,
+              replies: message.replies,
+              channel: channel.channel_id,
+              team: team._id,
+            },
+            upsert: true,
+            setDefaultsOnInsert: true,
+          }
+        }
+      )
+    })
+
+    if (updateOperations.length > 0) {
+      // Enqueue background processing of message writes
+      saveMessages
+        .then(() => models.Message.bulkWrite(updateOperations))
+        .catch(() => writeFailures += updateOperations.length)
+    }
+
+    channelsRemaining = channelsRemaining - 1
+  }
+
+  clearInterval(timer)
+  console.log('Finished loading messages.')
+
+  console.log('Waiting for writes to finish.')
+
+  await saveMessages
+  console.log(`${writeFailures} errors during processing.`)
+}
+
+// Traverses all of the messages in the channel for the given time frame
+// start is the timestamp of the oldest message
+// end is the timestamp of the latest message
+const loadChannelMessagesForTeam = module.exports.loadChannelMessagesForTeam = async (team_id, channelId, start, end) => {
   const { slack } = await slackApiForTeam(team_id)
 
-  let quota = 300
-  let moreMessages = true
-  let nextCursor = undefined
-  while (moreMessages && quota) {
-    const response = (await slack.GetConversationHistory(
-      channelId,
-      { start, end, cursor: nextCursor, }
-    )).data
-    console.log(`GOT ${response.messages.length} MESSAGES`)
-    response.messages.forEach(message => console.log(`TS: ${message.ts}`))
-
-    moreMessages = response.has_more
-    nextCursor = moreMessages && response.response_metadata.next_cursor
-    console.log(`CURSOR ${nextCursor}`)
-  }
+  return await followCursor(
+    cursor => slack.GetConversationHistory(channelId, { cursor, start, end }),
+    (result, response) => arrayConcatMutate(result, response.messages)
+  )
 }
 
 // Traverses all of the users in the slack team
@@ -199,4 +266,12 @@ async function followCursor (makeRequestWithCursor, accumulate) {
   }
 
   return result
+}
+
+// Concatenates dest to src, mutating src.
+function arrayConcatMutate (src, dest) {
+  for (const element of dest) {
+    src.push(element)
+  }
+  return src
 }
