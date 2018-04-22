@@ -64,6 +64,17 @@ Promise.all([
         .catch(err => res.statusCode(400).json(httpError(400, 'bad slack response', err)))
     })
 
+    app.get('/teams/:teamId', (req, res, next) => {
+      console.log('TEAM BY ID')
+      Api.getTeamByTeamId(req.params.teamId)
+        .then(result => {
+          console.log('result')
+          console.log(result)
+          return res.json(result)
+        })
+        .catch(next)
+    })
+
     app.get('/teams', (req, res, next) => {
       console.log('TEAMS')
       Api.getTeams()
@@ -114,10 +125,8 @@ Promise.all([
         .finally(() => res.end())
     })
 
-    app.use((req, res) => {
-      console.log('RENDER APP')
-      return handler(req, res)
-    })
+    // Everything else gets passed through to Next
+    app.use((req, res) => handler(req, res))
 
     app.use((err, req, res, next) => {
       console.log('ERROR')
