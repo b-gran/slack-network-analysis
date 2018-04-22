@@ -131,3 +131,33 @@ const teamSchema = mongoose.Schema({
 })
 
 module.exports.Team = mongoose.model('Team', teamSchema)
+
+const messageSchema = mongoose.Schema({
+  user_id: {
+    type: String,
+    required: true,
+  },
+
+  ts: {
+    type: String,
+    required: true,
+  },
+
+  text: String,
+
+  reactions: mongoose.SchemaTypes.Array,
+
+  replies: mongoose.SchemaTypes.Array,
+
+  channel: {
+    type: String,
+    required: true,
+  },
+
+  team: {
+    type: mongoose.SchemaTypes.ObjectId,
+    required: true,
+  },
+})
+
+module.exports.Message = mongoose.model('Message', messageSchema)
