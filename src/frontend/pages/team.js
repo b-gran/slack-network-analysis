@@ -46,8 +46,22 @@ const getTeam = action(teamId => axios.get(`${SERVER_URL}/teams/${teamId}`)
   .catch(err => state.error = err)
 )
 
+// Loads all users during the request.
 const loadUserData = action(teamId => {
   const loadUsers = axios.post(`${SERVER_URL}/users?team_id=${teamId}`)
+    .then(() => getTeam(teamId))
+
+  // noinspection JSIgnoredPromiseFromCall
+  getTeam(teamId)
+
+  return loadUsers
+})
+
+// Loads channels in a background job.
+// Request will return immediately (if params are correct).
+// Need to keep polling team data.
+const loadChannelData = action(teamId => {
+  const loadUsers = axios.post(`${SERVER_URL}/channels?team_id=${teamId}`)
     .then(() => getTeam(teamId))
 
   // noinspection JSIgnoredPromiseFromCall
@@ -217,6 +231,49 @@ const Team = observer(class _Team extends React.Component {
                     </Button>
                   </Div>
                 </Div>
+
+                {/***********************
+                 ***** Channel data *****
+                 ***********************/}
+                <Div marginTop="20px">
+                  <Div margin="0 10px">
+                    <FormLabel>Channel Data</FormLabel>
+
+                    <Div display="flex" alignItems="center">
+                      <Div marginRight="10px">
+                        <FormLabel>
+                          <small>Has channel data?</small>
+                        </FormLabel>
+                      </Div>
+                      <Typography
+                        variant="body2">{R.toString(this.props.team.channel_data.has_channel_data)}</Typography>
+                    </Div>
+
+                    {this.props.team.channel_data.has_channel_data && (
+                      <Div display="flex" alignItems="center">
+                        <Div marginRight="10px">
+                          <FormLabel>
+                            <small>Last fetched channel data</small>
+                          </FormLabel>
+                        </Div>
+                        <Typography variant="body2">
+                          {new Date(this.props.team.channel_data.last_fetched).toLocaleString()}
+                        </Typography>
+                      </Div>
+                    )}
+
+                    <Button
+                      variant="raised"
+                      color="primary"
+                      disabled={this.props.team.channel_data.is_fetching}
+                      onClick={() => {
+                        return loadChannelData(this.props.team.team_id)
+                      }} >
+                      Reload channel data
+                    </Button>
+                  </Div>
+                </Div>
+
 
               </Div>
             )}
