@@ -35,7 +35,10 @@ const SlackApi = token => ({
 
 const slackApiForTeam = async team_id => {
   const team = await getTeamByTeamId(team_id)
-  return SlackApi(team.token)
+  return {
+    slack: SlackApi(team.token),
+    team: team,
+  }
 }
 
 module.exports.getTeams = async () => {
@@ -52,7 +55,7 @@ module.exports.createTeam = async team => {
 
 // Traverses all of the messages in the time frame
 module.exports.loadChannelMessagesForTeam = async (team_id, channelId, start, end) => {
-  const slack = await slackApiForTeam(team_id)
+  const { slack } = await slackApiForTeam(team_id)
 
   let quota = 300
   let moreMessages = true
@@ -73,11 +76,31 @@ module.exports.loadChannelMessagesForTeam = async (team_id, channelId, start, en
 
 // Traverses all of the users in the slack team
 module.exports.loadUsersForTeam = async team_id => {
-  const slack = await slackApiForTeam(team_id)
+  const { slack, team } = await slackApiForTeam(team_id)
 
   const response = (await slack.GetAllUsers()).data
   const users = response.members
   const realUsers = users.filter(user => !user.deleted && !user.is_bot)
-  console.log(`GOT ${realUsers.length} USERS`)
+
+  // Create & update users in bulk
+  // It would take ages to issue a bunch of findOneAndUpdates()
+  const updateOperations = realUsers.map(user => ({
+      updateOne: {
+        filter: {
+          user_id: user.id,
+        },
+        update: {
+          user_id: user.id,
+          name: user.profile.real_name,
+          slack_data: user,
+          team: team._id,
+        },
+        upsert: true,
+        setDefaultsOnInsert: true,
+      }
+    }
+  ))
+
+  return await models.User.bulkWrite(updateOperations)
 }
 
