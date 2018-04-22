@@ -56,6 +56,17 @@ const loadUserData = action(teamId => {
   return loadUsers
 })
 
+const loadMessageData = action(teamId => {
+  console.log('LOAD MESSAGE DATA')
+  // const loadUsers = axios.post(`${SERVER_URL}/users?team_id=${teamId}`)
+  //   .then(() => getTeam(teamId))
+  //
+  // // noinspection JSIgnoredPromiseFromCall
+  // getTeam(teamId)
+  //
+  // return loadUsers
+})
+
 const Team = observer(class _Team extends React.Component {
   static displayName = 'Team'
 
@@ -83,7 +94,7 @@ const Team = observer(class _Team extends React.Component {
     return (
       <React.Fragment>
         <Head>
-          <title>Slack Network Analysis: </title>
+          <title>Slack Network Analysis{this.props.isLoaded && `: ${this.props.team.team}`}</title>
         </Head>
         <Div display="flex" flexDirection="column" justifyContent="center" alignItems="center"
              height="100vh">
@@ -117,10 +128,15 @@ const Team = observer(class _Team extends React.Component {
                 <Div display="flex" marginTop="20px">
                   <Div margin="0 10px">
                     <FormLabel>URL</FormLabel>
-                    <Typography variant="body2">{this.props.team.url}</Typography>
+                    <a href={this.props.team.url}>
+                      <Typography variant="body2">{this.props.team.url}</Typography>
+                    </a>
                   </Div>
                 </Div>
 
+                {/***********************
+                  ****** User data ******
+                  ***********************/}
                 <Div marginTop="20px">
                   <Div margin="0 10px">
                     <FormLabel>User Data</FormLabel>
@@ -159,6 +175,49 @@ const Team = observer(class _Team extends React.Component {
                     </Button>
                   </Div>
                 </Div>
+
+                {/***********************
+                 ***** Message data *****
+                 ***********************/}
+                <Div marginTop="20px">
+                  <Div margin="0 10px">
+                    <FormLabel>Message Data</FormLabel>
+
+                    <Div display="flex" alignItems="center">
+                      <Div marginRight="10px">
+                        <FormLabel>
+                          <small>Has message data?</small>
+                        </FormLabel>
+                      </Div>
+                      <Typography
+                        variant="body2">{R.toString(this.props.team.message_data.has_message_data)}</Typography>
+                    </Div>
+
+                    {this.props.team.message_data.has_message_data && (
+                      <Div display="flex" alignItems="center">
+                        <Div marginRight="10px">
+                          <FormLabel>
+                            <small>Last fetched message data</small>
+                          </FormLabel>
+                        </Div>
+                        <Typography variant="body2">
+                          {new Date(this.props.team.message_data.last_fetched).toLocaleString()}
+                        </Typography>
+                      </Div>
+                    )}
+
+                    <Button
+                      variant="raised"
+                      color="primary"
+                      disabled={this.props.team.message_data.is_fetching}
+                      onClick={() => {
+                        return loadMessageData(this.props.team.team_id)
+                      }} >
+                      Reload message data
+                    </Button>
+                  </Div>
+                </Div>
+
               </Div>
             )}
 
