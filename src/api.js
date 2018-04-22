@@ -89,7 +89,7 @@ module.exports.getChannelByChannelId = async channelId => {
 module.exports.loadMessagesForTeam = async team_id => {
   const { team } = await slackApiForTeam(team_id)
 
-  const channels = await getChannels(team_id)
+  const channels = (await getChannels(team_id)).slice(939, 1264)
 
   // Loading messages between 1 August 2017 and the present.
   const start = new Date(2017, 7, 1)
