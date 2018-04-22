@@ -70,15 +70,17 @@ const loadChannelData = action(teamId => {
   return loadUsers
 })
 
+// Loads messages in a background job.
+// Request will return immediately (if params are correct).
+// Need to keep polling team data.
 const loadMessageData = action(teamId => {
-  console.log('LOAD MESSAGE DATA')
-  // const loadUsers = axios.post(`${SERVER_URL}/users?team_id=${teamId}`)
-  //   .then(() => getTeam(teamId))
-  //
-  // // noinspection JSIgnoredPromiseFromCall
-  // getTeam(teamId)
-  //
-  // return loadUsers
+  const loadUsers = axios.post(`${SERVER_URL}/messages?team_id=${teamId}`)
+    .then(() => getTeam(teamId))
+
+  // noinspection JSIgnoredPromiseFromCall
+  getTeam(teamId)
+
+  return loadUsers
 })
 
 const Team = observer(class _Team extends React.Component {

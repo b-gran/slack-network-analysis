@@ -90,19 +90,54 @@ Promise.all([
         .catch(next)
     })
 
-    app.get('/messages', q({ channel: fieldExists, team_id: fieldExists }), (req, res) => {
-      console.log(`MESSAGES (${req.query.channel}) TEAM(${req.query.team_id})`)
-      Api.loadChannelMessagesForTeam(req.query.team_id, req.query.channel, new Date(2018, 2, 18, 19))
-        .then(result => {
-          console.log('result')
-          console.log(result)
-        })
-        .catch(err => {
-          console.log('err')
-          console.log(err)
-        })
-        .finally(() => res.end())
-    })
+    app.post('/messages', q({ team_id: fieldExists }), h(async (req, res) => {
+      const { team_id } = req.query
+      console.log(`MESSAGES TEAM(${team_id})`)
+
+      const team = await remapError('error accessing team')(models.Team.findOneAndUpdate(
+        { team_id: team_id },
+        {
+          $set: {
+            'message_data.is_fetching': true,
+          },
+        }
+      ))
+
+      if (!team) {
+        return errorHandler(res, `no team found with id ${team_id}`, 400)()
+      }
+
+      // Start background processing job
+      setImmediate(
+        async () => {
+          try {
+            await Api.loadMessagesForTeam(team_id)
+            console.log(`Finished loading messages for team ${team.team}`)
+          } catch (err) {
+            console.error('Error loading messages')
+            console.log(err)
+          } finally {
+            try {
+              await models.Team.findOneAndUpdate(
+                { team_id: team_id },
+                {
+                  $set: {
+                    'message_data.is_fetching': false,
+                    'message_data.has_message_data': true,
+                    'message_data.last_fetched': new Date(),
+                  },
+                }
+              )
+            } catch (updateErr) {
+              console.warn('Failed to update message_data')
+            }
+          }
+        }
+      )
+
+      // Return quickly
+      return res.status(200).json({ ok: true })
+    }))
 
     app.post('/users', q({ team_id: fieldExists }), h(async (req, res) => {
       const { team_id } = req.query
