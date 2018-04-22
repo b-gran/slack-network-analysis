@@ -33,16 +33,33 @@ const SlackApi = token => ({
   }
 })
 
-const slack = SlackApi(process.env.SLACK_TOKEN)
+const slackApiForTeam = async team_id => {
+  const team = await getTeamByTeamId(team_id)
+  return SlackApi(team.token)
+}
+
+module.exports.getTeams = async () => {
+  return models.Team.find({})
+}
+
+const getTeamByTeamId = module.exports.getTeamByTeamId = async teamId => {
+  return models.Team.findOne({ team_id: teamId })
+}
+
+module.exports.createTeam = async team => {
+  return (new models.Team(team)).save()
+}
 
 // Traverses all of the messages in the time frame
-module.exports.traverseMessages = async (conversationId, start, end) => {
+module.exports.loadChannelMessagesForTeam = async (team_id, channelId, start, end) => {
+  const slack = await slackApiForTeam(team_id)
+
   let quota = 300
   let moreMessages = true
   let nextCursor = undefined
   while (moreMessages && quota) {
     const response = (await slack.GetConversationHistory(
-      conversationId,
+      channelId,
       { start, end, cursor: nextCursor, }
     )).data
     console.log(`GOT ${response.messages.length} MESSAGES`)
@@ -55,21 +72,12 @@ module.exports.traverseMessages = async (conversationId, start, end) => {
 }
 
 // Traverses all of the users in the slack team
-module.exports.traverseUsers = async () => {
+module.exports.loadUsersForTeam = async team_id => {
+  const slack = await slackApiForTeam(team_id)
+
   const response = (await slack.GetAllUsers()).data
   const users = response.members
   const realUsers = users.filter(user => !user.deleted && !user.is_bot)
   console.log(`GOT ${realUsers.length} USERS`)
 }
 
-module.exports.getTeams = async () => {
-  return models.Team.find({})
-}
-
-module.exports.getTeamByTeamId = async teamId => {
-  return models.Team.findOne({ team_id: teamId })
-}
-
-module.exports.createTeam = async team => {
-  return (new models.Team(team)).save()
-}

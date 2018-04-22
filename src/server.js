@@ -1,3 +1,5 @@
+const R = require('ramda')
+
 const http = require('http')
 const path = require('path')
 const express = require('express')
@@ -48,20 +50,16 @@ Promise.all([
 
     app.use(bodyParser.json())
 
-    app.get('/slack/getTeamData', (req, res, next) => {
+    app.get('/slack/getTeamData', q({ token: fieldExists }), (req, res, next) => {
       console.log('SLACK TEAM DATA')
-      if (!req.query.token) {
-        return res.statusCode(400).json(httpError(400, 'missing slack token'))
-      }
-
       axios({
         url: 'https://slack.com/api/auth.test',
         params: {
           token: req.query.token,
         }
       })
-        .then(res => res.statusCode(200).json(res.data))
-        .catch(err => res.statusCode(400).json(httpError(400, 'bad slack response', err)))
+        .then(res => res.status(200).json(res.data))
+        .catch(err => res.status(400).json(httpError(400, 'bad slack response', err)))
     })
 
     app.get('/teams/:teamId', (req, res, next) => {
@@ -97,9 +95,9 @@ Promise.all([
         .catch(next)
     })
 
-    app.get('/messages', (req, res) => {
-      console.log(`MESSAGES (${req.query.channel})`)
-      Api.traverseMessages(req.query.channel, new Date(2018, 2, 18, 19))
+    app.get('/messages', q({ channel: fieldExists, team_id: fieldExists }), (req, res) => {
+      console.log(`MESSAGES (${req.query.channel}) TEAM(${req.query.team_id})`)
+      Api.loadChannelMessagesForTeam(req.query.team_id, req.query.channel, new Date(2018, 2, 18, 19))
         .then(result => {
           console.log('result')
           console.log(result)
@@ -111,9 +109,9 @@ Promise.all([
         .finally(() => res.end())
     })
 
-    app.get('/users', (req, res) => {
-      console.log(`USERS (${req.query.channel})`)
-      Api.traverseUsers(req.query.channel)
+    app.get('/users', q({ team_id: fieldExists }), (req, res) => {
+      console.log(`USERS (${req.query.team_id})`)
+      Api.loadUsersForTeam(req.query.team_id)
         .then(result => {
           console.log('result')
           console.log(result)
@@ -131,7 +129,7 @@ Promise.all([
     app.use((err, req, res, next) => {
       console.log('ERROR')
       console.log(err)
-      return res.statusCode(500).json(err)
+      return res.status(500).json(err)
     })
 
     server = http.createServer(app).listen(process.env.PORT)
@@ -157,4 +155,43 @@ function close (closeable) {
       return resolve()
     }
   ))
+}
+
+const fieldExists = {
+  check: Boolean,
+  message: 'must be provided',
+}
+
+// Validate query strings
+// Usage:
+// q({
+//   foo: {
+//     check: s => s.length === 3,
+//     message: 'must have length 3',
+//   },
+// })
+function q (validator) {
+  if (!validator || R.type(validator) !== 'Object') {
+    throw new Error('request query validators require a validation object')
+  }
+
+  const keys = Object.keys(validator)
+  if (keys.length === 0) {
+    return (req, res, next) => next()
+  }
+
+  return (req, res, next) => {
+    const queryStringErrors = keys.reduce((failures, key) => {
+      const { check, message } = validator[key]
+      return check(req.query[key])
+        ? failures
+        : { ...failures, [key]: message }
+    }, {})
+
+    if (Object.keys(queryStringErrors).length === 0) {
+      return next()
+    }
+
+    return res.status(400).json(httpError(400, 'invalid query', queryStringErrors))
+  }
 }
