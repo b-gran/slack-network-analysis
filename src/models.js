@@ -25,6 +25,27 @@ const userSchema = mongoose.Schema({
 
 module.exports.User = mongoose.model('User', userSchema)
 
+const channelSchema = mongoose.Schema({
+  // The channel's ID within Slack
+  channel_id: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+
+  name: String,
+
+  // user_id of the members of this channel
+  members: [String],
+
+  // Raw channel model data from Slack
+  slack_data: {
+    type: Object,
+  },
+})
+
+module.exports.Channel = mongoose.model('Channel', channelSchema)
+
 const userData = mongoose.Schema({
   has_user_data: {
     type: Boolean,
@@ -39,6 +60,18 @@ const userData = mongoose.Schema({
 
 const messageData = mongoose.Schema({
   has_message_data: {
+    type: Boolean,
+    default: false,
+  },
+  is_fetching: {
+    type: Boolean,
+    default: false,
+  },
+  last_fetched: Date,
+})
+
+const channelData = mongoose.Schema({
+  has_channel_data: {
     type: Boolean,
     default: false,
   },
@@ -84,6 +117,13 @@ const teamSchema = mongoose.Schema({
     type: messageData,
     required: true,
     default: messageData,
+  },
+
+  // Keep track of whether we've fetched the channel data
+  channel_data: {
+    type: channelData,
+    required: true,
+    default: channelData,
   },
 })
 
