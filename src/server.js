@@ -9,6 +9,7 @@ const axios = require('axios')
 const httpError = require('./error').httpError
 
 const Api = require('./api')
+const models = require('./models')
 
 console.log('Starting up...')
 process.once('SIGUSR2', () => {
@@ -66,8 +67,6 @@ Promise.all([
       console.log('TEAM BY ID')
       Api.getTeamByTeamId(req.params.teamId)
         .then(result => {
-          console.log('result')
-          console.log(result)
           return res.json(result)
         })
         .catch(next)
@@ -77,8 +76,6 @@ Promise.all([
       console.log('TEAMS')
       Api.getTeams()
         .then(result => {
-          console.log('result')
-          console.log(result)
           return res.json(result)
         })
         .catch(next)
@@ -88,8 +85,6 @@ Promise.all([
       console.log(`CREATING TEAM ${req.body}`)
       Api.createTeam(req.body)
         .then(team => {
-          console.log('team')
-          console.log(team)
           return res.json(team)
         })
         .catch(next)
@@ -109,19 +104,43 @@ Promise.all([
         .finally(() => res.end())
     })
 
-    app.get('/users', q({ team_id: fieldExists }), (req, res) => {
-      console.log(`USERS (${req.query.team_id})`)
-      Api.loadUsersForTeam(req.query.team_id)
-        .then(result => {
-          console.log('result')
-          console.log(result)
-        })
-        .catch(err => {
-          console.log('err')
-          console.log(err)
-        })
-        .finally(() => res.end())
-    })
+    app.post('/users', q({ team_id: fieldExists }), h(async (req, res) => {
+      const { team_id } = req.query
+      console.log(`USERS (${team_id})`)
+
+      const team = await remapError('error accessing team')(models.Team.findOneAndUpdate(
+          { team_id: team_id },
+          {
+            $set: {
+              'user_data.is_fetching': true,
+            },
+          }
+        ))
+
+      if (!team) {
+        return errorHandler(res, `no team found with id ${team_id}`, 400)()
+      }
+
+      try {
+        const result = await remapError('error loading users')(Api.loadUsersForTeam(req.query.team_id))
+        return res.status(200).json({ ok: true, userCount: result.matchedCount })
+      } finally {
+        try {
+          await models.Team.findOneAndUpdate(
+            { team_id: team_id },
+            {
+              $set: {
+                'user_data.is_fetching': false,
+                'user_data.has_user_data': true,
+                'user_data.last_fetched': new Date(),
+              },
+            }
+          )
+        } catch (updateErr) {
+          console.warn('Failed to update is_fetching')
+        }
+      }
+    }))
 
     // Everything else gets passed through to Next
     app.use((req, res) => handler(req, res))
@@ -155,6 +174,46 @@ function close (closeable) {
       return resolve()
     }
   ))
+}
+
+function errorHandler (res, message, code = 500) {
+  return err => res.status(code).json(httpError(code, message, err))
+}
+
+function errorToObject (err) {
+  return {
+    message: err.toString(),
+    stack: err.stack,
+  }
+}
+
+// Wrap an async function into a request handler that gracefully handles errors.
+// If the async function rejects with an error that's been remapped via remapError(),
+// h() will send a nicely formatted response with the correct status code.
+function h (asyncRequestHandler) {
+  return (req, res, next) => {
+    asyncRequestHandler(req, res, next)
+      .catch(err => {
+        if (err._app) {
+          const appError = err._app
+          delete err._app
+
+          return res.status(appError.code).json(httpError(appError.code, appError.message, errorToObject(err)))
+        }
+
+        return next(err)
+      })
+  }
+}
+
+function remapError (message, code = 500) {
+  return promise => promise.catch(err => {
+    err._app = {
+      message: message,
+      code: code,
+    }
+    return Promise.reject(err)
+  })
 }
 
 const fieldExists = {
