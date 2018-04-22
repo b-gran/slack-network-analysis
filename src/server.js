@@ -137,9 +137,59 @@ Promise.all([
             }
           )
         } catch (updateErr) {
-          console.warn('Failed to update is_fetching')
+          console.warn('Failed to update user_data')
         }
       }
+    }))
+
+    app.post('/channels', q({ team_id: fieldExists }), h(async (req, res) => {
+      const { team_id } = req.query
+      console.log(`CHANNELS (${team_id})`)
+
+      const team = await remapError('error accessing team')(models.Team.findOneAndUpdate(
+        { team_id: team_id },
+        {
+          $set: {
+            'channel_data.is_fetching': true,
+          },
+        }
+      ))
+
+      if (!team) {
+        return errorHandler(res, `no team found with id ${team_id}`, 400)()
+      }
+
+      // Start background processing job
+      setImmediate(
+        async () => {
+          try {
+            const result = await Api.loadChannelsForTeam(team_id)
+            console.log(`Loaded ${result.matchedCount} channels`)
+          } catch (err) {
+            console.error('Error loading channels')
+            console.log(err)
+          } finally {
+            try {
+              await models.Team.findOneAndUpdate(
+                { team_id: team_id },
+                {
+                  $set: {
+                    'channel_data.is_fetching': false,
+                    'channel_data.has_channel_data': true,
+                    'channel_data.last_fetched': new Date(),
+                  },
+                }
+              )
+            } catch (updateErr) {
+              console.warn('Failed to update channel_data')
+            }
+          }
+
+        }
+      )
+
+      // Return quickly
+      return res.status(200).json({ ok: true })
     }))
 
     // Everything else gets passed through to Next
