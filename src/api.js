@@ -101,51 +101,60 @@ module.exports.loadMessagesForTeam = async team_id => {
     2000
   )
 
+  let failedChannels = []
   let writeFailures = 0
   const saveMessages = Promise.resolve()
 
   for (const channel of channels) {
-    const messages = await loadChannelMessagesForTeam(team_id, channel.channel_id, start)
+    try {
+      const messages = await loadChannelMessagesForTeam(team_id, channel.channel_id, start)
 
-    // Create & update messages in bulk
-    // It would take ages to issue a bunch of findOneAndUpdates()
-    const updateOperations = messages.map(message => {
-      const id = message.user || message.bot_id
-      return ({
-          updateOne: {
-            filter: {
-              user_id: id,
-              ts: message.ts,
-              team: team._id,
-            },
-            update: {
-              user_id: id,
-              ts: message.ts,
-              text: message.text,
-              reactions: message.reactions,
-              replies: message.replies,
-              channel: channel.channel_id,
-              team: team._id,
-            },
-            upsert: true,
-            setDefaultsOnInsert: true,
+      // Create & update messages in bulk
+      // It would take ages to issue a bunch of findOneAndUpdates()
+      const updateOperations = messages.map(message => {
+        const id = message.user || message.bot_id
+        return ({
+            updateOne: {
+              filter: {
+                user_id: id,
+                ts: message.ts,
+                team: team._id,
+              },
+              update: {
+                user_id: id,
+                ts: message.ts,
+                text: message.text,
+                reactions: message.reactions,
+                replies: message.replies,
+                channel: channel.channel_id,
+                team: team._id,
+              },
+              upsert: true,
+              setDefaultsOnInsert: true,
+            }
           }
-        }
-      )
-    })
+        )
+      })
 
-    if (updateOperations.length > 0) {
-      // Enqueue background processing of message writes
-      saveMessages
-        .then(() => models.Message.bulkWrite(updateOperations))
-        .catch(() => writeFailures += updateOperations.length)
+      if (updateOperations.length > 0) {
+        // Enqueue background processing of message writes
+        saveMessages
+          .then(() => models.Message.bulkWrite(updateOperations))
+          .catch(() => writeFailures += updateOperations.length)
+      }
+    } catch (err) {
+      console.error(`Failed channel ${channel.name}`)
+      failedChannels.push(channel.name)
+    } finally {
+      channelsRemaining = channelsRemaining - 1
     }
-
-    channelsRemaining = channelsRemaining - 1
   }
 
   clearInterval(timer)
   console.log('Finished loading messages.')
+
+  console.log(`Failed channels (${failedChannels.length}):`)
+  console.log(failedChannels)
 
   console.log('Waiting for writes to finish.')
 
@@ -159,10 +168,21 @@ module.exports.loadMessagesForTeam = async team_id => {
 const loadChannelMessagesForTeam = module.exports.loadChannelMessagesForTeam = async (team_id, channelId, start, end) => {
   const { slack } = await slackApiForTeam(team_id)
 
-  return await followCursor(
-    cursor => slack.GetConversationHistory(channelId, { cursor, start, end }),
-    (result, response) => arrayConcatMutate(result, response.messages)
-  )
+  let tries = 3
+  let result = null
+  while (result === null && tries > 0) {
+    try {
+      result = await followCursor(
+        cursor => slack.GetConversationHistory(channelId, { cursor, start, end }),
+        (result, response) => arrayConcatMutate(result, response.messages)
+      )
+    } catch (err) {
+      console.warn('Rate limited. Waiting 30 seconds...')
+      tries = tries - 1
+      await delay(30000)
+    }
+  }
+  return result || Promise.reject(new Error(`Failed to fetch messages for channel ${channelId}`))
 }
 
 // Traverses all of the users in the slack team
@@ -274,4 +294,11 @@ function arrayConcatMutate (src, dest) {
     src.push(element)
   }
   return src
+}
+
+function delay (duration) {
+  return new Promise(resolve => setTimeout(
+    () => resolve(),
+    duration
+  ))
 }
