@@ -62,9 +62,12 @@ module.exports.traverseUsers = async () => {
   console.log(`GOT ${realUsers.length} USERS`)
 }
 
-// Return the teams stored by the application
 module.exports.getTeams = async () => {
   return models.Team.find({})
+}
+
+module.exports.getTeamByTeamId = async teamId => {
+  return models.Team.findOne({ team_id: teamId })
 }
 
 module.exports.createTeam = async team => {
