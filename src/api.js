@@ -19,6 +19,7 @@ const SlackApi = token => ({
         cursor: cursor,
         latest: endTimeSeconds,
         oldest: startTimeSeconds,
+        limit: 500,
       }
     })
   },
@@ -89,7 +90,7 @@ module.exports.getChannelByChannelId = async channelId => {
 module.exports.loadMessagesForTeam = async team_id => {
   const { team } = await slackApiForTeam(team_id)
 
-  const channels = (await getChannels(team_id)).slice(939, 1264)
+  const channels = await getChannels(team_id)
 
   // Loading messages between 1 August 2017 and the present.
   const start = new Date(2017, 7, 1)
@@ -106,6 +107,12 @@ module.exports.loadMessagesForTeam = async team_id => {
   const saveMessages = Promise.resolve()
 
   for (const channel of channels) {
+    if (channel.name.match(/alerts/) || channel.name.match(/jira$/) || channel.name.match(/jiraall/)) {
+      console.log(`Skipping channel ${channel.name}`)
+      channelsRemaining = channelsRemaining - 1
+      continue
+    }
+
     try {
       const messages = await loadChannelMessagesForTeam(team_id, channel.channel_id, start)
 
@@ -270,7 +277,7 @@ async function followCursor (makeRequestWithCursor, accumulate) {
     const response = await retryWithBackoff(() => makeRequestWithCursor(nextCursor))
     result = accumulate(result, response.data)
 
-    nextCursor = getNextCursor(response)
+    nextCursor = getNextCursor(response.data)
     moreMessages = isNonEmptyString(nextCursor)
   }
 
