@@ -59,7 +59,7 @@ Promise.all([
           token: req.query.token,
         }
       })
-        .then(res => res.status(200).json(res.data))
+        .then(r => res.status(200).json(r.data))
         .catch(err => res.status(400).json(httpError(400, 'bad slack response', err)))
     })
 
@@ -82,7 +82,7 @@ Promise.all([
     })
 
     app.post('/teams', (req, res, next) => {
-      console.log(`CREATING TEAM ${req.body}`)
+      console.log(`CREATING TEAM`, req.body)
       Api.createTeam(req.body)
         .then(team => {
           return res.json(team)
