@@ -37,7 +37,7 @@ const state = (module.hot && module.hot.data && module.hot.data.state) ?
     }
   })
 
-const getTeamData = token => axios.get({
+const getTeamData = token => axios({
   url: `${SERVER_URL}/slack/getTeamData`,
   params: {
     token: token,
@@ -72,9 +72,10 @@ const setToken = action(token => state.addTeamModal.token = token)
 const addTeam = action(() => {
   getTeamData(state.addTeamModal.token)
     .then(teamData => createTeam(state.addTeamModal.token, teamData))
-
-  state.addTeamModal.token = ''
-  state.showAddTeamModal = false
+    .finally(() => {
+      state.addTeamModal.token = ''
+      state.showAddTeamModal = false
+    })
 })
 
 const Index = observer(class _Index extends React.Component {
