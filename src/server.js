@@ -91,19 +91,19 @@ Promise.all([
         .catch(next)
     })
 
-    app.post('/users', job(
+    app.post('/jobs/users', job(
       teamId => remapError('error loading users')(Api.loadUsersForTeam(teamId)),
       models.Team,
       'user_data'
     ))
 
-    app.post('/channels', job(
+    app.post('/jobs/channels', job(
       teamId => remapError('error loading channels')(Api.loadChannelsForTeam(teamId)),
       models.Team,
       'channel_data'
     ))
 
-    app.post('/messages', job(
+    app.post('/jobs/messages', job(
       teamId => remapError('error loading messages')(Api.loadMessagesForTeam(teamId)),
       models.Team,
       'message_data'

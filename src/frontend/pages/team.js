@@ -56,7 +56,7 @@ const getTeam = action(teamId => axios.get(`${SERVER_URL}/teams/${teamId}`)
 
 // Loads all users during the request.
 const loadUserData = action(teamId => {
-  const loadUsers = axios.post(`${SERVER_URL}/users?team_id=${teamId}`)
+  const loadUsers = axios.post(`${SERVER_URL}/jobs/users?team_id=${teamId}`)
     .then(() => getTeam(teamId))
 
   // noinspection JSIgnoredPromiseFromCall
@@ -69,7 +69,7 @@ const loadUserData = action(teamId => {
 // Request will return immediately (if params are correct).
 // Need to keep polling team data.
 const loadChannelData = action(teamId => {
-  const loadUsers = axios.post(`${SERVER_URL}/channels?team_id=${teamId}`)
+  const loadUsers = axios.post(`${SERVER_URL}/jobs/channels?team_id=${teamId}`)
     .then(() => getTeam(teamId))
 
   // noinspection JSIgnoredPromiseFromCall
@@ -82,7 +82,7 @@ const loadChannelData = action(teamId => {
 // Request will return immediately (if params are correct).
 // Need to keep polling team data.
 const loadMessageData = action(teamId => {
-  const loadUsers = axios.post(`${SERVER_URL}/messages?team_id=${teamId}`)
+  const loadUsers = axios.post(`${SERVER_URL}/jobs/messages?team_id=${teamId}`)
     .then(() => getTeam(teamId))
 
   // noinspection JSIgnoredPromiseFromCall
