@@ -49,40 +49,16 @@ const channelSchema = mongoose.Schema({
 
 module.exports.Channel = mongoose.model('Channel', channelSchema)
 
-const userData = mongoose.Schema({
-  has_user_data: {
+const jobData = mongoose.Schema({
+  ever_run: {
     type: Boolean,
     default: false,
   },
-  is_fetching: {
+  is_running: {
     type: Boolean,
     default: false,
   },
-  last_fetched: Date,
-})
-
-const messageData = mongoose.Schema({
-  has_message_data: {
-    type: Boolean,
-    default: false,
-  },
-  is_fetching: {
-    type: Boolean,
-    default: false,
-  },
-  last_fetched: Date,
-})
-
-const channelData = mongoose.Schema({
-  has_channel_data: {
-    type: Boolean,
-    default: false,
-  },
-  is_fetching: {
-    type: Boolean,
-    default: false,
-  },
-  last_fetched: Date,
+  last_run: Date,
 })
 
 const teamSchema = mongoose.Schema({
@@ -110,23 +86,23 @@ const teamSchema = mongoose.Schema({
 
   // Keep track of whether we've fetched the user data
   user_data: {
-    type: userData,
+    type: jobData,
     required: true,
-    default: userData,
+    default: jobData,
   },
 
   // Keep track of whether we've fetched the message data
   message_data: {
-    type: messageData,
+    type: jobData,
     required: true,
-    default: messageData,
+    default: jobData,
   },
 
   // Keep track of whether we've fetched the channel data
   channel_data: {
-    type: channelData,
+    type: jobData,
     required: true,
-    default: channelData,
+    default: jobData,
   },
 })
 

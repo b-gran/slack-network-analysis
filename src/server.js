@@ -98,7 +98,7 @@ Promise.all([
         { team_id: team_id },
         {
           $set: {
-            'message_data.is_fetching': true,
+            'message_data.is_running': true,
           },
         }
       ))
@@ -122,9 +122,9 @@ Promise.all([
                 { team_id: team_id },
                 {
                   $set: {
-                    'message_data.is_fetching': false,
-                    'message_data.has_message_data': true,
-                    'message_data.last_fetched': new Date(),
+                    'message_data.is_running': false,
+                    'message_data.ever_run': true,
+                    'message_data.last_run': new Date(),
                   },
                 }
               )
@@ -147,7 +147,7 @@ Promise.all([
           { team_id: team_id },
           {
             $set: {
-              'user_data.is_fetching': true,
+              'user_data.is_running': true,
             },
           }
         ))
@@ -165,9 +165,9 @@ Promise.all([
             { team_id: team_id },
             {
               $set: {
-                'user_data.is_fetching': false,
-                'user_data.has_user_data': true,
-                'user_data.last_fetched': new Date(),
+                'user_data.is_running': false,
+                'user_data.ever_run': true,
+                'user_data.last_run': new Date(),
               },
             }
           )
@@ -185,7 +185,7 @@ Promise.all([
         { team_id: team_id },
         {
           $set: {
-            'channel_data.is_fetching': true,
+            'channel_data.is_running': true,
           },
         }
       ))
@@ -209,9 +209,9 @@ Promise.all([
                 { team_id: team_id },
                 {
                   $set: {
-                    'channel_data.is_fetching': false,
-                    'channel_data.has_channel_data': true,
-                    'channel_data.last_fetched': new Date(),
+                    'channel_data.is_running': false,
+                    'channel_data.ever_run': true,
+                    'channel_data.last_run': new Date(),
                   },
                 }
               )

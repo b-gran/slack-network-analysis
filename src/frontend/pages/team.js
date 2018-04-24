@@ -174,10 +174,10 @@ const Team = observer(class _Team extends React.Component {
                         </FormLabel>
                       </Div>
                       <Typography
-                        variant="body2">{R.toString(this.props.team.user_data.has_user_data)}</Typography>
+                        variant="body2">{R.toString(this.props.team.user_data.ever_run)}</Typography>
                     </Div>
 
-                    {this.props.team.user_data.has_user_data && (
+                    {this.props.team.user_data.ever_run && (
                       <Div display="flex" alignItems="center">
                         <Div marginRight="10px">
                           <FormLabel>
@@ -185,7 +185,7 @@ const Team = observer(class _Team extends React.Component {
                           </FormLabel>
                         </Div>
                         <Typography variant="body2">
-                          {new Date(this.props.team.user_data.last_fetched).toLocaleString()}
+                          {new Date(this.props.team.user_data.last_run).toLocaleString()}
                         </Typography>
                       </Div>
                     )}
@@ -193,7 +193,7 @@ const Team = observer(class _Team extends React.Component {
                     <Button
                       variant="raised"
                       color="primary"
-                      disabled={this.props.team.user_data.is_fetching}
+                      disabled={this.props.team.user_data.is_running}
                       onClick={() => {
                         return loadUserData(this.props.team.team_id)
                       }} >
@@ -216,10 +216,10 @@ const Team = observer(class _Team extends React.Component {
                         </FormLabel>
                       </Div>
                       <Typography
-                        variant="body2">{R.toString(this.props.team.message_data.has_message_data)}</Typography>
+                        variant="body2">{R.toString(this.props.team.message_data.ever_run)}</Typography>
                     </Div>
 
-                    {this.props.team.message_data.has_message_data && (
+                    {this.props.team.message_data.ever_run && (
                       <Div display="flex" alignItems="center">
                         <Div marginRight="10px">
                           <FormLabel>
@@ -227,7 +227,7 @@ const Team = observer(class _Team extends React.Component {
                           </FormLabel>
                         </Div>
                         <Typography variant="body2">
-                          {new Date(this.props.team.message_data.last_fetched).toLocaleString()}
+                          {new Date(this.props.team.message_data.last_run).toLocaleString()}
                         </Typography>
                       </Div>
                     )}
@@ -235,7 +235,7 @@ const Team = observer(class _Team extends React.Component {
                     <Button
                       variant="raised"
                       color="primary"
-                      disabled={this.props.team.message_data.is_fetching}
+                      disabled={this.props.team.message_data.is_running}
                       onClick={() => {
                         return loadMessageData(this.props.team.team_id)
                       }} >
@@ -258,10 +258,10 @@ const Team = observer(class _Team extends React.Component {
                         </FormLabel>
                       </Div>
                       <Typography
-                        variant="body2">{R.toString(this.props.team.channel_data.has_channel_data)}</Typography>
+                        variant="body2">{R.toString(this.props.team.channel_data.ever_run)}</Typography>
                     </Div>
 
-                    {this.props.team.channel_data.has_channel_data && (
+                    {this.props.team.channel_data.ever_run && (
                       <Div display="flex" alignItems="center">
                         <Div marginRight="10px">
                           <FormLabel>
@@ -269,7 +269,7 @@ const Team = observer(class _Team extends React.Component {
                           </FormLabel>
                         </Div>
                         <Typography variant="body2">
-                          {new Date(this.props.team.channel_data.last_fetched).toLocaleString()}
+                          {new Date(this.props.team.channel_data.last_run).toLocaleString()}
                         </Typography>
                       </Div>
                     )}
@@ -277,7 +277,7 @@ const Team = observer(class _Team extends React.Component {
                     <Button
                       variant="raised"
                       color="primary"
-                      disabled={this.props.team.channel_data.is_fetching}
+                      disabled={this.props.team.channel_data.is_running}
                       onClick={() => {
                         return loadChannelData(this.props.team.team_id)
                       }} >
