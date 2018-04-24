@@ -160,133 +160,20 @@ const Team = observer(class _Team extends React.Component {
                   </Div>
                 </Div>
 
-                {/***********************
-                  ****** User data ******
-                  ***********************/}
-                <Div marginTop="20px">
-                  <Div margin="0 10px">
-                    <FormLabel>User Data</FormLabel>
+                <Job
+                  jobData={this.props.team.user_data}
+                  label="User data from Slack"
+                  onRunJob={() => loadUserData(this.props.team.team_id)} />
 
-                    <Div display="flex" alignItems="center">
-                      <Div marginRight="10px">
-                        <FormLabel>
-                          <small>Has user data?</small>
-                        </FormLabel>
-                      </Div>
-                      <Typography
-                        variant="body2">{R.toString(this.props.team.user_data.ever_run)}</Typography>
-                    </Div>
+                <Job
+                  jobData={this.props.team.message_data}
+                  label="Message data from Slack"
+                  onRunJob={() => loadMessageData(this.props.team.team_id)} />
 
-                    {this.props.team.user_data.ever_run && (
-                      <Div display="flex" alignItems="center">
-                        <Div marginRight="10px">
-                          <FormLabel>
-                            <small>Last fetched user data</small>
-                          </FormLabel>
-                        </Div>
-                        <Typography variant="body2">
-                          {new Date(this.props.team.user_data.last_run).toLocaleString()}
-                        </Typography>
-                      </Div>
-                    )}
-
-                    <Button
-                      variant="raised"
-                      color="primary"
-                      disabled={this.props.team.user_data.is_running}
-                      onClick={() => {
-                        return loadUserData(this.props.team.team_id)
-                      }} >
-                      Reload user data
-                    </Button>
-                  </Div>
-                </Div>
-
-                {/***********************
-                 ***** Message data *****
-                 ***********************/}
-                <Div marginTop="20px">
-                  <Div margin="0 10px">
-                    <FormLabel>Message Data</FormLabel>
-
-                    <Div display="flex" alignItems="center">
-                      <Div marginRight="10px">
-                        <FormLabel>
-                          <small>Has message data?</small>
-                        </FormLabel>
-                      </Div>
-                      <Typography
-                        variant="body2">{R.toString(this.props.team.message_data.ever_run)}</Typography>
-                    </Div>
-
-                    {this.props.team.message_data.ever_run && (
-                      <Div display="flex" alignItems="center">
-                        <Div marginRight="10px">
-                          <FormLabel>
-                            <small>Last fetched message data</small>
-                          </FormLabel>
-                        </Div>
-                        <Typography variant="body2">
-                          {new Date(this.props.team.message_data.last_run).toLocaleString()}
-                        </Typography>
-                      </Div>
-                    )}
-
-                    <Button
-                      variant="raised"
-                      color="primary"
-                      disabled={this.props.team.message_data.is_running}
-                      onClick={() => {
-                        return loadMessageData(this.props.team.team_id)
-                      }} >
-                      Reload message data
-                    </Button>
-                  </Div>
-                </Div>
-
-                {/***********************
-                 ***** Channel data *****
-                 ***********************/}
-                <Div marginTop="20px">
-                  <Div margin="0 10px">
-                    <FormLabel>Channel Data</FormLabel>
-
-                    <Div display="flex" alignItems="center">
-                      <Div marginRight="10px">
-                        <FormLabel>
-                          <small>Has channel data?</small>
-                        </FormLabel>
-                      </Div>
-                      <Typography
-                        variant="body2">{R.toString(this.props.team.channel_data.ever_run)}</Typography>
-                    </Div>
-
-                    {this.props.team.channel_data.ever_run && (
-                      <Div display="flex" alignItems="center">
-                        <Div marginRight="10px">
-                          <FormLabel>
-                            <small>Last fetched channel data</small>
-                          </FormLabel>
-                        </Div>
-                        <Typography variant="body2">
-                          {new Date(this.props.team.channel_data.last_run).toLocaleString()}
-                        </Typography>
-                      </Div>
-                    )}
-
-                    <Button
-                      variant="raised"
-                      color="primary"
-                      disabled={this.props.team.channel_data.is_running}
-                      onClick={() => {
-                        return loadChannelData(this.props.team.team_id)
-                      }} >
-                      Reload channel data
-                    </Button>
-                  </Div>
-                </Div>
-
-
+                <Job
+                  jobData={this.props.team.channel_data}
+                  label="Channel data from Slack"
+                  onRunJob={() => loadChannelData(this.props.team.team_id)} />
               </Div>
             )}
 
@@ -320,6 +207,53 @@ const visualizeButton = css(important({
 }))
 
 const WIndex = inject(stores => ({ ...stores.state }))(Team)
+
+function Job (props) {
+  return (
+    <Div marginTop="20px">
+      <Div margin="0 10px">
+        <FormLabel>{ props.label }</FormLabel>
+
+        <Div display="flex" alignItems="center">
+          <Div marginRight="10px">
+            <FormLabel>
+              <small>Ever run job?</small>
+            </FormLabel>
+          </Div>
+          <Typography
+            variant="body2">{R.toString(props.jobData.ever_run)}</Typography>
+        </Div>
+
+        {props.jobData.ever_run && (
+          <Div display="flex" alignItems="center">
+            <Div marginRight="10px">
+              <FormLabel>
+                <small>Last ran job</small>
+              </FormLabel>
+            </Div>
+            <Typography variant="body2">
+              {new Date(props.jobData.last_run).toLocaleString()}
+            </Typography>
+          </Div>
+        )}
+
+        <Button
+          variant="raised"
+          color="primary"
+          disabled={props.jobData.is_running}
+          onClick={props.onRunJob}>
+          Run job
+        </Button>
+      </Div>
+    </Div>
+  )
+}
+Job.displayName = 'Job'
+Job.propTypes = {
+  label: PropTypes.node.isRequired,
+  jobData: MProps.JobData.isRequired,
+  onRunJob: PropTypes.func.isRequired,
+}
 
 export default () => (
   <Provider state={state}>
