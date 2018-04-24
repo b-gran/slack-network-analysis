@@ -19,6 +19,7 @@
   "dependencies": {
     "axios": "^0.18.0",
     "body-parser": "^1.18.2",
+    "cytoscape": "^3.2.11",
     "express": "^4.16.3",
     "glamor": "^2.20.40",
     "glamorous": "^4.12.4",
