@@ -1,12 +1,14 @@
 const R = require('ramda')
 
 const http = require('http')
+const assert = require('assert')
 const path = require('path')
 const express = require('express')
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
 const axios = require('axios')
 const httpError = require('./error').httpError
+const next = require('next')
 
 const Api = require('./api')
 const models = require('./models')
@@ -33,7 +35,6 @@ console.log(`Connecting to mongodb at ${DATABASE_URL}`)
 
 let server
 const nextDirectory = path.join(__dirname, 'frontend')
-const next = require('next')
 const nextApp = next({
   dir: nextDirectory,
   dev: process.env.NODE_ENV !== 'production',
@@ -90,142 +91,23 @@ Promise.all([
         .catch(next)
     })
 
-    app.post('/messages', q({ team_id: fieldExists }), h(async (req, res) => {
-      const { team_id } = req.query
-      console.log(`MESSAGES TEAM(${team_id})`)
+    app.post('/users', job(
+      teamId => remapError('error loading users')(Api.loadUsersForTeam(teamId)),
+      models.Team,
+      'user_data'
+    ))
 
-      const team = await remapError('error accessing team')(models.Team.findOneAndUpdate(
-        { team_id: team_id },
-        {
-          $set: {
-            'message_data.is_running': true,
-          },
-        }
-      ))
+    app.post('/channels', job(
+      teamId => remapError('error loading channels')(Api.loadChannelsForTeam(teamId)),
+      models.Team,
+      'channel_data'
+    ))
 
-      if (!team) {
-        return errorHandler(res, `no team found with id ${team_id}`, 400)()
-      }
-
-      // Start background processing job
-      setImmediate(
-        async () => {
-          try {
-            await Api.loadMessagesForTeam(team_id)
-            console.log(`Finished loading messages for team ${team.team}`)
-          } catch (err) {
-            console.error('Error loading messages')
-            console.log(err)
-          } finally {
-            try {
-              await models.Team.findOneAndUpdate(
-                { team_id: team_id },
-                {
-                  $set: {
-                    'message_data.is_running': false,
-                    'message_data.ever_run': true,
-                    'message_data.last_run': new Date(),
-                  },
-                }
-              )
-            } catch (updateErr) {
-              console.warn('Failed to update message_data')
-            }
-          }
-        }
-      )
-
-      // Return quickly
-      return res.status(200).json({ ok: true })
-    }))
-
-    app.post('/users', q({ team_id: fieldExists }), h(async (req, res) => {
-      const { team_id } = req.query
-      console.log(`USERS (${team_id})`)
-
-      const team = await remapError('error accessing team')(models.Team.findOneAndUpdate(
-          { team_id: team_id },
-          {
-            $set: {
-              'user_data.is_running': true,
-            },
-          }
-        ))
-
-      if (!team) {
-        return errorHandler(res, `no team found with id ${team_id}`, 400)()
-      }
-
-      try {
-        const result = await remapError('error loading users')(Api.loadUsersForTeam(req.query.team_id))
-        return res.status(200).json({ ok: true, userCount: result.matchedCount })
-      } finally {
-        try {
-          await models.Team.findOneAndUpdate(
-            { team_id: team_id },
-            {
-              $set: {
-                'user_data.is_running': false,
-                'user_data.ever_run': true,
-                'user_data.last_run': new Date(),
-              },
-            }
-          )
-        } catch (updateErr) {
-          console.warn('Failed to update user_data')
-        }
-      }
-    }))
-
-    app.post('/channels', q({ team_id: fieldExists }), h(async (req, res) => {
-      const { team_id } = req.query
-      console.log(`CHANNELS (${team_id})`)
-
-      const team = await remapError('error accessing team')(models.Team.findOneAndUpdate(
-        { team_id: team_id },
-        {
-          $set: {
-            'channel_data.is_running': true,
-          },
-        }
-      ))
-
-      if (!team) {
-        return errorHandler(res, `no team found with id ${team_id}`, 400)()
-      }
-
-      // Start background processing job
-      setImmediate(
-        async () => {
-          try {
-            const result = await Api.loadChannelsForTeam(team_id)
-            console.log(`Loaded ${result.matchedCount} channels`)
-          } catch (err) {
-            console.error('Error loading channels')
-            console.log(err)
-          } finally {
-            try {
-              await models.Team.findOneAndUpdate(
-                { team_id: team_id },
-                {
-                  $set: {
-                    'channel_data.is_running': false,
-                    'channel_data.ever_run': true,
-                    'channel_data.last_run': new Date(),
-                  },
-                }
-              )
-            } catch (updateErr) {
-              console.warn('Failed to update channel_data')
-            }
-          }
-
-        }
-      )
-
-      // Return quickly
-      return res.status(200).json({ ok: true })
-    }))
+    app.post('/messages', job(
+      teamId => remapError('error loading messages')(Api.loadMessagesForTeam(teamId)),
+      models.Team,
+      'message_data'
+    ))
 
     // Everything else gets passed through to Next
     app.use((req, res) => handler(req, res))
@@ -239,6 +121,73 @@ Promise.all([
     server = http.createServer(app).listen(process.env.PORT)
     console.log('Base server started')
   })
+
+// Returns an Express router that will run background jobs
+// The router will automatically update the corresponding model, which must have a JobData field.
+// The jobName must be the name of the model's JobData field.
+function job (runJob, model, jobName) {
+  assert(typeof jobName === 'string', 'missing job name')
+
+  const prefix = `(job ${jobName})`
+  assert(typeof runJob === 'function', `${prefix} invalid job runner`)
+  assert(typeof model === 'function', `${prefix} invalid model`)
+
+  const jobRouter = express.Router()
+
+  jobRouter.use(q({ team_id: fieldExists }))
+
+  jobRouter.use(h(async (req, res) => {
+    console.log(`${prefix} starting job`)
+
+    const { team_id } = req.query
+    const team = await remapError(`${prefix} error accessing team`)(model.findOneAndUpdate(
+      { team_id: team_id },
+      {
+        $set: {
+          [`${jobName}.is_running`]: true,
+        },
+      }
+    ))
+
+    if (!team) {
+      return errorHandler(res, `${prefix} no team found with id ${team_id}`, 400)()
+    }
+
+    // Start background processing job
+    setImmediate(
+      async () => {
+        try {
+          await runJob(team_id)
+          console.log(`${prefix} Finished job`)
+        } catch (err) {
+          console.error(`${prefix} Error running job`)
+          console.log(err)
+        } finally {
+          try {
+            await model.findOneAndUpdate(
+              { team_id: team_id },
+              {
+                $set: {
+                 [`${jobName}.is_running`]: false,
+                 [`${jobName}.ever_run`]: true,
+                 [`${jobName}.last_run`]: new Date(),
+                },
+              }
+            )
+          } catch (updateErr) {
+            console.warn(`${prefix} Failed to job data`)
+            console.log(updateErr)
+          }
+        }
+      }
+    )
+
+    // Return quickly
+    return res.status(200).json({ ok: true })
+  }))
+
+  return jobRouter
+}
 
 async function shutdown () {
   if (server) {
