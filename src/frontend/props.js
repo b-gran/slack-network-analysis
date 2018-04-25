@@ -15,6 +15,8 @@ export const Team = PropTypes.shape({
   user_data: JobData.isRequired,
   message_data: JobData.isRequired,
   channel_data: JobData.isRequired,
+  mention_job: JobData.isRequired,
+  network_job: JobData.isRequired,
 })
 
 export const error = PropTypes.oneOfType([

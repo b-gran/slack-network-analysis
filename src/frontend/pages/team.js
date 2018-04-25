@@ -54,41 +54,15 @@ const getTeam = action(teamId => axios.get(`${SERVER_URL}/teams/${teamId}`)
   .catch(err => state.error = err)
 )
 
-// Loads all users during the request.
-const loadUserData = action(teamId => {
-  const loadUsers = axios.post(`${SERVER_URL}/jobs/users?team_id=${teamId}`)
+// Starts a job and updates the team data immediately after initiating the request.
+const runJob = action((jobName, teamId) => {
+  const jobRequest = axios.post(`${SERVER_URL}/jobs/${jobName}?team_id=${teamId}`)
     .then(() => getTeam(teamId))
 
   // noinspection JSIgnoredPromiseFromCall
   getTeam(teamId)
 
-  return loadUsers
-})
-
-// Loads channels in a background job.
-// Request will return immediately (if params are correct).
-// Need to keep polling team data.
-const loadChannelData = action(teamId => {
-  const loadUsers = axios.post(`${SERVER_URL}/jobs/channels?team_id=${teamId}`)
-    .then(() => getTeam(teamId))
-
-  // noinspection JSIgnoredPromiseFromCall
-  getTeam(teamId)
-
-  return loadUsers
-})
-
-// Loads messages in a background job.
-// Request will return immediately (if params are correct).
-// Need to keep polling team data.
-const loadMessageData = action(teamId => {
-  const loadUsers = axios.post(`${SERVER_URL}/jobs/messages?team_id=${teamId}`)
-    .then(() => getTeam(teamId))
-
-  // noinspection JSIgnoredPromiseFromCall
-  getTeam(teamId)
-
-  return loadUsers
+  return jobRequest
 })
 
 const theme = createMuiTheme()
@@ -149,9 +123,7 @@ const Team = observer(class _Team extends React.Component {
                     <FormLabel>Team id</FormLabel>
                     <Typography variant="body2">{this.props.team.team_id}</Typography>
                   </Div>
-                </Div>
 
-                <Div display="flex" marginTop="20px">
                   <Div margin="0 10px">
                     <FormLabel>URL</FormLabel>
                     <a href={this.props.team.url}>
@@ -160,20 +132,34 @@ const Team = observer(class _Team extends React.Component {
                   </Div>
                 </Div>
 
-                <Job
-                  jobData={this.props.team.user_data}
-                  label="User data from Slack"
-                  onRunJob={() => loadUserData(this.props.team.team_id)} />
+                <Div display="flex">
+                  <Job
+                    jobData={this.props.team.user_data}
+                    label="User data from Slack"
+                    onRunJob={() => runJob('users', this.props.team.team_id)} />
+
+                  <Job
+                    jobData={this.props.team.message_data}
+                    label="Message data from Slack"
+                    onRunJob={() => runJob('messages', this.props.team.team_id)} />
+                </Div>
+
+                <Div display="flex">
+                  <Job
+                    jobData={this.props.team.channel_data}
+                    label="Channel data from Slack"
+                    onRunJob={() => runJob('channels', this.props.team.team_id)}/>
+
+                  <Job
+                    jobData={this.props.team.mention_job}
+                    label="Compute mention counts"
+                    onRunJob={() => runJob('mentions', this.props.team.team_id)}/>
+                </Div>
 
                 <Job
-                  jobData={this.props.team.message_data}
-                  label="Message data from Slack"
-                  onRunJob={() => loadMessageData(this.props.team.team_id)} />
-
-                <Job
-                  jobData={this.props.team.channel_data}
-                  label="Channel data from Slack"
-                  onRunJob={() => loadChannelData(this.props.team.team_id)} />
+                  jobData={this.props.team.network_job}
+                  label="Generate network"
+                  onRunJob={() => runJob('network', this.props.team.team_id)} />
               </Div>
             )}
 
