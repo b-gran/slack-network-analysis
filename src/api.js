@@ -420,8 +420,7 @@ const getThreadRelation = async user => {
       }
     ]
   })
-
-  const threadRelation = getThreadRelationForThreads(user, allThreadsForUser)
+  return getThreadRelationForThreads(user, allThreadsForUser)
 }
 
 // Get thread counts for other users
@@ -444,16 +443,36 @@ const getThreadRelationForThreads = module.exports.getThreadRelationForThreads =
   }
 
   for (const thread of allThreadsForUser) {
-    // Someone else started the thread
-    if (thread.user_id && thread.user_id !== user.user_id) {
-      incrementThreads(1, thread.user_id, threadCountsbyUser)
+    // Skip empty threads
+    if (!thread.replies || R.isEmpty(thread.replies)) {
+      continue
     }
 
+    // Need to determine if the user actually participated in this thread.
+    // Usually this is true (the query already does this), but this function supports
+    // threads that the user hasn't participated in.
+    let participatedInThread = thread.user_id === user.user_id
+
+    // Keep track of the counts within the thread.
+    // We might not add them to the total if the user didn't participate.
+    const relationForThread = new Map()
+
+    // Don't double count users in the thread.
+    // The current user's id may be in this set.
     const countedUsers = new Set()
+
+    // Someone else started the thread
+    if (thread.user_id && thread.user_id !== user.user_id) {
+      incrementThreads(1, thread.user_id, relationForThread)
+    }
+
+    countedUsers.add(thread.user_id)
 
     // Handle replies.
     // Note: replies needs to be non-nil and non-empty, and needs to contain 1-tuples of objects.
     for (const [{ user: replyUserId }] of thread.replies) {
+      participatedInThread = participatedInThread || replyUserId === user.user_id
+
       // Skip if we've already counted this user
       if (countedUsers.has(replyUserId)) {
         continue
@@ -461,8 +480,15 @@ const getThreadRelationForThreads = module.exports.getThreadRelationForThreads =
 
       // A reply from someone else
       if (replyUserId && replyUserId !== user.user_id) {
-        incrementThreads(1, replyUserId, threadCountsbyUser)
+        incrementThreads(1, replyUserId, relationForThread)
         countedUsers.add(replyUserId)
+      }
+    }
+
+    // If the current user did participate, add the thread relation values to the total.
+    if (participatedInThread) {
+      for (const [user_id, count] of relationForThread) {
+        incrementThreads(count, user_id, threadCountsbyUser)
       }
     }
   }
