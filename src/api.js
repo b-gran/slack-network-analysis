@@ -252,6 +252,145 @@ module.exports.loadChannelsForTeam = async team_id => {
   return await models.Channel.bulkWrite(updateOperations)
 }
 
+const atMentionRegexp = /<@\w+>/g
+const extractAtMentionRegexp = /<@(\w+)>/
+
+// Traverse the slack data, looking for mentions within messages.
+// Assumes that users, channels, & messages have already been loaded.
+module.exports.loadMentions = async team_id => {
+  const team = await getTeamByTeamId(team_id)
+
+  const users = await models.User.find({ team: team._id })
+  console.log('user length', users.length)
+
+  const usersById = new Map()
+  for (const user of users) {
+    usersById.set(user.user_id, user)
+  }
+
+  const messages = await models.Message.find({
+    team: team._id,
+    text: {
+      $regex: /<@/,
+
+      // Filter out system messages
+      $not: {
+        $in: [
+          /uploaded a file/,
+          /has joined the channel/,
+          /shared a file/,
+          /has left the channel/,
+          /has renamed the channel/,
+          /set the channel topic/
+        ]
+      }
+    }
+  })
+
+  const mentionsByUser = new Map()
+  const getMentionsForUser = user_id => {
+    return mentionsByUser.has(user_id)
+      ? mentionsByUser.get(user_id)
+      : mentionsByUser.set(user_id, new Map()).get(user_id)
+  }
+
+  // Increments the value of a key in a map by some amount.
+  // If the key isn't set, sets the value equal to n.
+  const incrementMentions = (n, key, map) => {
+    const currentValue = map.has(key)
+      ? map.get(key)
+      : 0
+    map.set(key, currentValue + n)
+    return map
+  }
+
+  for (const message of messages) {
+    // User ids surrounded with <@ >
+    const wrappedMentionedIds = message.text.match(atMentionRegexp)
+    if (!wrappedMentionedIds || R.isEmpty(wrappedMentionedIds)) {
+      continue
+    }
+
+    // Just the raw id within the <@ >
+    const mentionedIds = wrappedMentionedIds
+      .map(wrappedId => wrappedId.match(extractAtMentionRegexp)[1])
+
+    // Skip if we can't determine the id
+    // For file mentions, the message won't have a user_id field, but we
+    // can still determine the user_id.
+    const currentUserId = getUserIdForMessage(message, mentionedIds)
+    if (!currentUserId) {
+      console.warn('Malformed message')
+      console.log(message)
+      continue
+    }
+
+    const currentUserMentions = getMentionsForUser(currentUserId)
+
+    // Skip mentions of yourself
+    const mentionsOtherUsers = mentionedIds.filter(id => id !== currentUserId)
+
+    // Track mentions of others
+    mentionsOtherUsers.forEach(otherUserId => {
+      incrementMentions(1, otherUserId, currentUserMentions)
+    })
+  }
+
+  // Save mentions for users
+  for (const [user_id, mentionsOfOthers] of mentionsByUser) {
+    const user = await models.User.findOne({ user_id: user_id })
+
+    // Skip users we don't know about (deleted, etc.)
+    if (!user) continue
+
+    // Build the mentions object for storage
+    // WARNING: wipes the previous mentions
+    user.mentions = {}
+
+    for (const [other_user_id, mentionCount] of mentionsOfOthers) {
+      const otherUser = await models.User.findOne({ user_id: other_user_id })
+
+      // Skip users we don't know about (deleted, etc.)
+      if (!otherUser) continue
+
+      // Store mentions
+      user.mentions[other_user_id] = mentionCount
+    }
+
+    await user.save()
+  }
+}
+
+const isFileCommentRegexp = /^<@\w+> commented on/
+// Extracts the user id from message, handling edge cases like
+// file comments.
+// Returns nil if no user id could be extracted.
+function getUserIdForMessage (message, mentionedIds) {
+  // Straightforward: user_id attached to the message
+  if (message.user_id) {
+    return message.user_id
+  }
+
+  // See if it's a file comment
+  if (Boolean(message.text.match(isFileCommentRegexp))) {
+    return mentionedIds[0]
+  }
+
+  // Otherwise, we don't know the current user id
+  return null
+}
+
+// Build the network graph from pre-loaded Slack data.
+// Assumes that users, channels, & messages have already been loaded.
+module.exports.loadNetwork = async team_id => {
+  const team = await getTeamByTeamId(team_id)
+
+  const users = await models.User.find({ team: team._id })
+
+  console.log('user length', users.length)
+
+}
+
 const isNonEmptyString = R.allPass([
   x => typeof x === 'string',
   R.complement(R.isEmpty),

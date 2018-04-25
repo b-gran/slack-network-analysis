@@ -33,6 +33,9 @@ const userSchema = mongoose.Schema({
     ref: 'Team',
     required: true,
   },
+
+  // Who this user has mentioned in messages.
+  mentions: mongoose.SchemaTypes.Object,
 })
 
 module.exports.User = mongoose.model('User', userSchema)
@@ -228,6 +231,13 @@ const teamSchema = mongoose.Schema({
 
   // Keep track of whether we've fetched the channel data
   channel_data: {
+    type: jobData,
+    required: true,
+    default: jobData,
+  },
+
+  // Keep track of whether we've processed the slack data for mentions
+  mention_job: {
     type: jobData,
     required: true,
     default: jobData,
