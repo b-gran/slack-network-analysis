@@ -448,49 +448,21 @@ const getThreadRelationForThreads = module.exports.getThreadRelationForThreads =
       continue
     }
 
-    // Need to determine if the user actually participated in this thread.
-    // Usually this is true (the query already does this), but this function supports
-    // threads that the user hasn't participated in.
-    let participatedInThread = thread.user_id === user.user_id
-
-    // Keep track of the counts within the thread.
-    // We might not add them to the total if the user didn't participate.
-    const relationForThread = new Map()
-
-    // Don't double count users in the thread.
-    // The current user's id may be in this set.
-    const countedUsers = new Set()
-
-    // Someone else started the thread
-    if (thread.user_id && thread.user_id !== user.user_id) {
-      incrementThreads(1, thread.user_id, relationForThread)
+    const allIdsInThread = thread.replies.map(([{ user }]) => user)
+    if (thread.user_id) {
+      allIdsInThread.push(thread.user_id)
     }
 
-    countedUsers.add(thread.user_id)
+    const threadIds = new Set(allIdsInThread)
 
-    // Handle replies.
-    // Note: replies needs to be non-nil and non-empty, and needs to contain 1-tuples of objects.
-    for (const [{ user: replyUserId }] of thread.replies) {
-      participatedInThread = participatedInThread || replyUserId === user.user_id
-
-      // Skip if we've already counted this user
-      if (countedUsers.has(replyUserId)) {
-        continue
-      }
-
-      // A reply from someone else
-      if (replyUserId && replyUserId !== user.user_id) {
-        incrementThreads(1, replyUserId, relationForThread)
-        countedUsers.add(replyUserId)
-      }
+    // If the user didn't participate, skip the thread
+    if (!threadIds.has(user.user_id)) {
+      continue
     }
 
-    // If the current user did participate, add the thread relation values to the total.
-    if (participatedInThread) {
-      for (const [user_id, count] of relationForThread) {
-        incrementThreads(count, user_id, threadCountsbyUser)
-      }
-    }
+    // Count the rest of the replies (skipping the user's own replies).
+    threadIds.delete(user.user_id)
+    threadIds.forEach(user_id => incrementThreads(1, user_id, threadCountsbyUser))
   }
 
   return threadCountsbyUser
