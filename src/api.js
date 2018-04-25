@@ -257,6 +257,7 @@ const extractAtMentionRegexp = /<@(\w+)>/
 
 // Traverse the slack data, looking for mentions within messages.
 // Assumes that users, channels, & messages have already been loaded.
+// TODO: handle a single message with multiple mentions of the same user
 module.exports.loadMentions = async team_id => {
   const team = await getTeamByTeamId(team_id)
 
@@ -382,13 +383,91 @@ function getUserIdForMessage (message, mentionedIds) {
 
 // Build the network graph from pre-loaded Slack data.
 // Assumes that users, channels, & messages have already been loaded.
+// Also assumes that mentions have been computed.
 module.exports.loadNetwork = async team_id => {
   const team = await getTeamByTeamId(team_id)
 
   const users = await models.User.find({ team: team._id })
 
-  console.log('user length', users.length)
+  for (const user of users) {
 
+  }
+}
+
+// Get thread counts for other users
+const getThreadRelation = async user => {
+  const allThreadsForUser = await models.Message.find({
+    $and: [
+      // The message must have some replies
+      { replies: { $ne: null } },
+
+      {
+        $or: [
+          // The user started the thread
+          { user_id: user.user_id },
+
+          // Or the user participated somewhere in the thread
+          {
+            replies: {
+              $elemMatch: {
+                $elemMatch: {
+                  user: user.user_id
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  })
+
+  const threadRelation = getThreadRelationForThreads(user, allThreadsForUser)
+}
+
+// Get thread counts for other users
+const getThreadRelationForThreads = module.exports.getThreadRelationForThreads = (user, allThreadsForUser) => {
+  const threadCountsbyUser = new Map()
+
+  // Increments the value of a key in a map by some amount.
+  // If the key isn't set, sets the value equal to n.
+  const incrementThreads = (n, key, map) => {
+    const currentValue = map.has(key)
+      ? map.get(key)
+      : 0
+    map.set(key, currentValue + n)
+    return map
+  }
+
+  // User didn't participate in any threads
+  if (!allThreadsForUser) {
+    return threadCountsbyUser
+  }
+
+  for (const thread of allThreadsForUser) {
+    // Someone else started the thread
+    if (thread.user_id && thread.user_id !== user.user_id) {
+      incrementThreads(1, thread.user_id, threadCountsbyUser)
+    }
+
+    const countedUsers = new Set()
+
+    // Handle replies.
+    // Note: replies needs to be non-nil and non-empty, and needs to contain 1-tuples of objects.
+    for (const [{ user: replyUserId }] of thread.replies) {
+      // Skip if we've already counted this user
+      if (countedUsers.has(replyUserId)) {
+        continue
+      }
+
+      // A reply from someone else
+      if (replyUserId && replyUserId !== user.user_id) {
+        incrementThreads(1, replyUserId, threadCountsbyUser)
+        countedUsers.add(replyUserId)
+      }
+    }
+  }
+
+  return threadCountsbyUser
 }
 
 const isNonEmptyString = R.allPass([
