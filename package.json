@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "restart": "docker-compose exec server /bin/sh -c 'kill -s SIGHUP 1'"
+    "restart": "docker-compose exec server /bin/sh -c 'kill -s SIGHUP 1'",
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -23,6 +24,7 @@
     "express": "^4.16.3",
     "glamor": "^2.20.40",
     "glamorous": "^4.12.4",
+    "jest": "^22.4.3",
     "material-ui": "^1.0.0-beta.42",
     "mobx": "^4.2.0",
     "mobx-react": "^5.0.0",
