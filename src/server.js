@@ -109,6 +109,18 @@ Promise.all([
       'message_data'
     ))
 
+    app.post('/jobs/mentions', job(
+      teamId => remapError('error loading mentions')(Api.loadMentions(teamId)),
+      models.Team,
+      'mention_job'
+    ))
+
+    app.post('/jobs/network', job(
+      teamId => remapError('error generating network')(Api.loadNetwork(teamId)),
+      models.Team,
+      'network_job'
+    ))
+
     // Everything else gets passed through to Next
     app.use((req, res) => handler(req, res))
 
