@@ -3,21 +3,20 @@ const R = require('ramda')
 
 const DAY_MS = (60 * 60 * 24) * 1000
 
-describe('getThreadRelationForThreads', () => {
-  const teamId = 'objectid'
+const teamId = 'objectid'
+function makeUser (id) {
+  return {
+    user_id: id,
+    name: `${id} name`,
+    slack_data: {},
+    team: teamId,
+    mentions: {},
+  }
+}
 
+describe('getThreadRelationForThreads', () => {
   const userFoo = makeUser('foo')
   const userBar = makeUser('bar')
-
-  function makeUser (id) {
-    return {
-      user_id: id,
-      name: `${id} name`,
-      slack_data: {},
-      team: teamId,
-      mentions: {},
-    }
-  }
 
   it('returns an empty Map if there are no threads', () => {
     // Nil threads
@@ -173,26 +172,126 @@ describe('getThreadRelationForThreads', () => {
       }])
     }
   }
+})
 
-  const randomSlackTimestamp = R.pipe(randomDateWithinLastDay, toSlackTimestamp)
+describe('getEdgesForUsers', () => {
+  it('throws if incorrect dependencies are provided', async () => {
+    expect.assertions(5)
 
-  // JS Dates are in ms since unix epoch.
-  // Slack dates are in seconds since unix epoch (with 6 decimal places).
-  function toSlackTimestamp (date) {
-    return date.getTime() / 1000
-  }
+    expect(Api.getEdgesForUsers([], undefined)).rejects.toBeTruthy()
+    expect(Api.getEdgesForUsers([], {})).rejects.toBeTruthy()
+    expect(Api.getEdgesForUsers([], { getThreadRelationForUser: jest.fn() })).rejects.toBeTruthy()
+    expect(Api.getEdgesForUsers([], { getThreadRelationForUser: jest.fn(), usersById: 'foo' })).rejects.toBeTruthy()
+    expect(Api.getEdgesForUsers([], { getThreadRelationForUser: 'foo', usersById: jest.fn() })).rejects.toBeTruthy()
+  })
 
-  function randomDateWithinLastDay () {
-    const now = Date.now()
-    const randomDateTimestamp = now - (Math.random() * DAY_MS)
-    return new Date(randomDateTimestamp)
-  }
+  it(`doesn't create edges if the users have no mentions or threads in common`, async () => {
+    expect.assertions(1)
 
-  function sample (array) {
-    if (R.isNil(array) || !Array.isArray(array) || R.isEmpty(array)) {
-      return undefined
+    const users = [makeUser('foo'), makeUser('bar')]
+    const usersById = Api.keyByMap(R.prop('user_id'), users)
+
+    const edges = await Api.getEdgesForUsers(users,
+      {
+        usersById,
+        getThreadRelationForUser: () => new Map()
+      }
+    )
+
+    expect(edges).toEqual(new Map())
+  })
+
+  it(`creates edges with the correct weight`, async () => {
+    expect.assertions(1)
+
+    const foo = makeUser('foo')
+    foo.mentions = {
+      bar: 9,
     }
 
-    return array[(Math.random() * array.length)|0]
-  }
+    const bar = makeUser('bar')
+    bar.mentions = {
+      foo: 14,
+    }
+
+    const threadRelationsByUserId = mapFromObject({
+      foo: mapFromObject({
+        bar: 7,
+      }),
+      bar: mapFromObject({
+        foo: 7,
+      })
+    })
+
+    const users = [foo, bar]
+    const usersById = Api.keyByMap(R.prop('user_id'), users)
+
+    const edges = await Api.getEdgesForUsers(users,
+      {
+        usersById,
+        getThreadRelationForUser: ({ user_id }) => threadRelationsByUserId.get(user_id),
+      }
+    )
+
+    // Note: if the weight algo changes, this needs to be updated.
+    const fooBarWeight = 1/(
+      2 * foo.mentions.bar +
+      2 * bar.mentions.foo +
+      threadRelationsByUserId.get('foo').get('bar')
+    )
+
+    expect(edges).toEqual(mapFromObject({
+      foo: mapFromObject({
+        bar: fooBarWeight,
+      }),
+      bar: mapFromObject({
+        foo: fooBarWeight,
+      }),
+    }))
+  })
 })
+
+describe('keyByMap', () => {
+  it('passes each element through the iteratee and returns a Map', () => {
+    const iterableArray = [{ x: 'foo' }, { x: 'bar' }, { x: 'baz' }, { x: 'fraz' }]
+    const iterableSet = new Set(iterableArray)
+
+    const expectedMap = new Map(R.toPairs({
+      'foo': { x: 'foo' },
+      'bar': { x: 'bar' },
+      'baz': { x: 'baz' },
+      'fraz': { x: 'fraz' },
+    }))
+
+    const mapFromArray = Api.keyByMap(R.prop('x'), iterableArray)
+    const mapFromSet = Api.keyByMap(R.prop('x'), iterableSet)
+    expect(mapFromArray).toEqual(expectedMap)
+    expect(mapFromSet).toEqual(expectedMap)
+  })
+})
+
+// Given an object, returns a Map with the same keys & values.
+// Note: keys will be strings.
+const mapFromObject = R.pipe(R.toPairs, R.constructN(1, Map))
+
+const randomSlackTimestamp = R.pipe(randomDateWithinLastDay, toSlackTimestamp)
+
+// JS Dates are in ms since unix epoch.
+// Slack dates are in seconds since unix epoch (with 6 decimal places).
+function toSlackTimestamp (date) {
+  return date.getTime() / 1000
+}
+
+function randomDateWithinLastDay () {
+  const now = Date.now()
+  const randomDateTimestamp = now - (Math.random() * DAY_MS)
+  return new Date(randomDateTimestamp)
+}
+
+function sample (array) {
+  if (R.isNil(array) || !Array.isArray(array) || R.isEmpty(array)) {
+    return undefined
+  }
+
+  return array[(Math.random() * array.length)|0]
+}

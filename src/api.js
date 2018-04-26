@@ -1,4 +1,5 @@
 const R = require('ramda')
+const assert = require('assert')
 const axios = require('axios')
 
 const models = require('./models')
@@ -388,13 +389,108 @@ module.exports.loadNetwork = async team_id => {
   const team = await getTeamByTeamId(team_id)
 
   const users = await models.User.find({ team: team._id })
+  const usersById = keyByMap(R.prop('user_id'), users)
+
+  const edgesByUser = await getEdgesForUsers(
+    users,
+    {
+      usersById,
+      getThreadRelationForUser: getThreadRelation
+    }
+  )
+
+  visualiseEdges(edgesByUser, usersById)
+}
+
+const getEdgesForUsers = module.exports.getEdgesForUsers = async (users, { getThreadRelationForUser, usersById }) => {
+  // getThreadRelationForUser will be called as follows:
+  //    await getThreadRelationForUser(user)
+  assert(typeof getThreadRelationForUser === 'function', 'missing getThreadRelationForUser dependency')
+  assert(R.is(Map, usersById), 'missing usersById dependency')
+
+  // Edges are undirected, i.e.
+  // (Edge a b) == (Edge b a)
+
+  // Map UserId (Map UserId Edge)
+  const edgesByUser = new Map()
+
+  const getOrCreateEdge = key => {
+    if (!edgesByUser.has(key)) {
+      edgesByUser.set(key, new Map())
+    }
+    return edgesByUser.get(key)
+  }
+
+  const addEdge = (userAId, userBId, weight) => {
+    const userAEdges = getOrCreateEdge(userAId)
+    const userBEdges = getOrCreateEdge(userBId)
+    userAEdges.set(userBId, weight)
+    userBEdges.set(userAId, weight)
+  }
+
+  const isEdgeCreated = (userA, userB) => (
+    edgesByUser.has(userA) && edgesByUser.get(userA).has(userB)
+  )
 
   for (const user of users) {
+    const threadRelation = await getThreadRelationForUser(user)
 
+    // User ids that we still need to create edges for.
+    const userIdsNotCreatedEdges = setFilter(
+      id => (
+        usersById.has(id) && // don't create edges for missing users (bots, deleted users, etc)
+        !isEdgeCreated(user.user_id, id) // don't recreate edges that have already been added
+      ),
+      setUnion(
+        new Set(threadRelation.keys()),
+        new Set(Object.keys(user.mentions))
+      )
+    )
+
+    // Weight:
+    //    (2*(@_ab) + 2*(@_ba) + M_t)⁻¹
+    for (const edgeUserId of userIdsNotCreatedEdges) {
+      const otherUser = usersById.get(edgeUserId)
+
+      // Mentions from currentUser -> otherUser
+      // const mentionsForward = user.mentions[edgeUserId] || 0
+      const mentionsForward = R.path([ 'mentions', edgeUserId ], user) || 0
+
+      // Mentions from otherUser -> currentUser
+      // const mentionsBackward = otherUser.mentions[user.user_id] || 0
+      const mentionsBackward = R.path([ 'mentions', user.user_id ], otherUser) || 0
+
+      const threadCount = threadRelation.get(edgeUserId) || 0
+
+      const denominator = 2 * mentionsForward + 2 * mentionsBackward + threadCount
+
+      // By our definition of edge, there is no edge between users if the denominator is 0.
+      if (denominator === 0) {
+        continue
+      }
+
+      const weight = 1/denominator
+      addEdge(user.user_id, edgeUserId, weight)
+    }
+  }
+
+  return edgesByUser
+}
+
+function visualiseEdges (edges, usersById) {
+  for (const [userId, weightsById] of edges) {
+    const user = usersById.get(userId)
+    console.log(`USER(${user.name})`)
+
+    for (const [otherUserId, weight] of weightsById) {
+      const otherUser = usersById.get(otherUserId)
+      console.log(`   EDGE(${otherUser.name}): <${weight}>`)
+    }
   }
 }
 
 // Get thread counts for other users
+// Returns a map of user_id => thread count
 const getThreadRelation = async user => {
   const allThreadsForUser = await models.Message.find({
     $and: [
@@ -529,6 +625,30 @@ function arrayConcatMutate (src, dest) {
     src.push(element)
   }
   return src
+}
+
+// Pure union of sets
+function setUnion (src, dest) {
+  const result = new Set(src)
+  for (const el of dest) {
+    result.add(el)
+  }
+  return result
+}
+
+// Filter a set. Does not modify the input set.
+const setFilter = R.curry((predicate, set) => {
+  const filtered = new Set()
+  set.forEach(element => predicate(element) && filtered.add(element))
+  return filtered
+})
+
+const keyByMap = module.exports.keyByMap = function keyByMap (iteratee, iterable) {
+  const map = new Map()
+  for (const element of iterable) {
+    map.set(iteratee(element), element)
+  }
+  return map
 }
 
 function delay (duration) {
