@@ -453,28 +453,37 @@ const getEdgesForUsers = module.exports.getEdgesForUsers = async (users, { getTh
       const otherUser = usersById.get(edgeUserId)
 
       // Mentions from currentUser -> otherUser
-      // const mentionsForward = user.mentions[edgeUserId] || 0
       const mentionsForward = R.path([ 'mentions', edgeUserId ], user) || 0
 
       // Mentions from otherUser -> currentUser
-      // const mentionsBackward = otherUser.mentions[user.user_id] || 0
       const mentionsBackward = R.path([ 'mentions', user.user_id ], otherUser) || 0
 
       const threadCount = threadRelation.get(edgeUserId) || 0
 
-      const denominator = 2 * mentionsForward + 2 * mentionsBackward + threadCount
+      const weight = getEdgeWeight(mentionsForward, mentionsBackward, threadCount)
 
-      // By our definition of edge, there is no edge between users if the denominator is 0.
-      if (denominator === 0) {
+      // By our definition of edge, there is no edge between users if the weight is 0.
+      if (weight === 0) {
         continue
       }
 
-      const weight = 1/denominator
       addEdge(user.user_id, edgeUserId, weight)
     }
   }
 
   return edgesByUser
+}
+
+const getEdgeWeight = module.exports.getEdgeWeight = function getEdgeWeight (outgoingMentions, incomingMentions, threadRelation) {
+  const denominator = (
+    2 * outgoingMentions +
+    2 * incomingMentions +
+    1 * threadRelation
+  )
+
+  return denominator === 0
+    ? 0
+    : 1 / denominator
 }
 
 function visualiseEdges (edges, usersById) {

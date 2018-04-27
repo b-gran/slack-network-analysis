@@ -233,10 +233,9 @@ describe('getEdgesForUsers', () => {
       }
     )
 
-    // Note: if the weight algo changes, this needs to be updated.
-    const fooBarWeight = 1/(
-      2 * foo.mentions.bar +
-      2 * bar.mentions.foo +
+    const fooBarWeight = Api.getEdgeWeight(
+      foo.mentions.bar,
+      bar.mentions.foo,
       threadRelationsByUserId.get('foo').get('bar')
     )
 
@@ -248,6 +247,22 @@ describe('getEdgesForUsers', () => {
         foo: fooBarWeight,
       }),
     }))
+  })
+})
+
+describe('getEdgeWeight', () => {
+  it('returns 0 if the users have no mentions or threads in common', () => {
+    expect(Api.getEdgeWeight(0, 0, 0)).toBe((0))
+  })
+
+  it('returns the correct value', () => {
+    const outgoing = 1.53453
+    const incoming = 9.23894
+    const threadRelation = 129.41847
+
+    const expectedWeight = 1/(2 * outgoing + 2 * incoming + threadRelation)
+
+    expect(Api.getEdgeWeight(outgoing, incoming, threadRelation)).toBe(expectedWeight)
   })
 })
 
