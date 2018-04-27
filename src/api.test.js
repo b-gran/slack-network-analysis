@@ -186,12 +186,12 @@ describe('getEdgesForUsers', () => {
   })
 
   it(`doesn't create edges if the users have no mentions or threads in common`, async () => {
-    expect.assertions(1)
+    expect.assertions(2)
 
     const users = [makeUser('foo'), makeUser('bar')]
     const usersById = Api.keyByMap(R.prop('user_id'), users)
 
-    const edges = await Api.getEdgesForUsers(users,
+    const [edges, edgeList] = await Api.getEdgesForUsers(users,
       {
         usersById,
         getThreadRelationForUser: () => new Map()
@@ -199,10 +199,11 @@ describe('getEdgesForUsers', () => {
     )
 
     expect(edges).toEqual(new Map())
+    expect(edgeList).toEqual([])
   })
 
   it(`creates edges with the correct weight`, async () => {
-    expect.assertions(1)
+    expect.assertions(5)
 
     const foo = makeUser('foo')
     foo.mentions = {
@@ -226,7 +227,7 @@ describe('getEdgesForUsers', () => {
     const users = [foo, bar]
     const usersById = Api.keyByMap(R.prop('user_id'), users)
 
-    const edges = await Api.getEdgesForUsers(users,
+    const [edges, edgeList] = await Api.getEdgesForUsers(users,
       {
         usersById,
         getThreadRelationForUser: ({ user_id }) => threadRelationsByUserId.get(user_id),
@@ -247,10 +248,16 @@ describe('getEdgesForUsers', () => {
         foo: fooBarWeight,
       }),
     }))
+
+    expect(edgeList.length).toEqual(1)
+    const [edge] = edgeList
+    expect(edge.includes('foo')).toBeTruthy()
+    expect(edge.includes('bar')).toBeTruthy()
+    expect(edge[2]).toBe(fooBarWeight)
   })
 
   it(`supports nil mentions`, async () => {
-    expect.assertions(1)
+    expect.assertions(5)
 
     const foo = makeUser('foo')
     delete foo.mentions
@@ -270,7 +277,7 @@ describe('getEdgesForUsers', () => {
     const users = [foo, bar]
     const usersById = Api.keyByMap(R.prop('user_id'), users)
 
-    const edges = await Api.getEdgesForUsers(users,
+    const [edges, edgeList] = await Api.getEdgesForUsers(users,
       {
         usersById,
         getThreadRelationForUser: ({ user_id }) => threadRelationsByUserId.get(user_id),
@@ -287,6 +294,70 @@ describe('getEdgesForUsers', () => {
         foo: fooBarWeight,
       }),
     }))
+
+    expect(edgeList.length).toEqual(1)
+    const [edge] = edgeList
+    expect(edge.includes('foo')).toBeTruthy()
+    expect(edge.includes('bar')).toBeTruthy()
+    expect(edge[2]).toBe(fooBarWeight)
+  })
+
+  it('returns a map such that A→B = B→A', async () => {
+    const userIds = R.times(String, 20)
+
+    const users = userIds.map(userId => {
+      const user = makeUser(userId)
+      user.mentions = R.pipe(
+        R.reject(R.equals(userId)),
+        R.converge(R.zipObj, [R.identity, R.map(() => (Math.random() * 15)|0)]),
+      )(userIds)
+      return user
+    })
+
+    const usersById = Api.keyByMap(R.prop('user_id'), users)
+
+    const getOrCreate = (key, map) => {
+      if (!map.has(key)) {
+        map.set(key, new Map())
+      }
+      return map.get(key)
+    }
+
+    // All unique (undirected) [ a, b ] pairs s.t. a != b
+    const uniquePairs = R.pipe(
+      // de-dupe undirected pairs
+      R.map(R.sortBy(R.flip(parseInt)(10))), R.uniq,
+
+      // remove [ n, n ] pairs
+      R.reject(R.converge(R.equals, [ R.nth(0), R.nth(1) ])),
+    )(R.xprod(userIds, userIds))
+
+    // Create a map with random thread counts
+    const threadRelation = new Map()
+    uniquePairs.forEach(([src, dest]) => {
+      // Always a non-zero thread count so the number of edges is deterministic
+      const threadCount = ((Math.random() * 14)|0) + 1
+
+      const srcThreadCount = getOrCreate(src, threadRelation)
+      const destThreadCount = getOrCreate(dest, threadRelation)
+      srcThreadCount.set(dest, threadCount)
+      destThreadCount.set(src, threadCount)
+    })
+
+    const [edges, edgeList] = await Api.getEdgesForUsers(users, {
+      getThreadRelationForUser: user => threadRelation.get(user.user_id),
+      usersById
+    })
+
+    // A→B = B→A assertion for every unique pair
+    uniquePairs.forEach(([src, dest]) => {
+      const edgeSrcDest = edges.get(src).get(dest)
+      const edgeDestSrc = edges.get(dest).get(src)
+      expect(edgeSrcDest).toBe(edgeDestSrc)
+    })
+
+    // Correct number of unique edges
+    expect(edgeList.length).toBe(userIds.length * (userIds.length - 1) / 2)
   })
 })
 

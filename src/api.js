@@ -398,8 +398,6 @@ module.exports.loadNetwork = async team_id => {
       getThreadRelationForUser: getThreadRelation
     }
   )
-
-  visualiseEdges(edgesByUser, usersById)
 }
 
 const getEdgesForUsers = module.exports.getEdgesForUsers = async (users, { getThreadRelationForUser, usersById }) => {
@@ -414,6 +412,9 @@ const getEdgesForUsers = module.exports.getEdgesForUsers = async (users, { getTh
   // Map UserId (Map UserId Edge)
   const edgesByUser = new Map()
 
+  // [Edge], where Edge is [userAId, userBId, weight]
+  const edges = []
+
   const getOrCreateEdge = key => {
     if (!edgesByUser.has(key)) {
       edgesByUser.set(key, new Map())
@@ -422,6 +423,10 @@ const getEdgesForUsers = module.exports.getEdgesForUsers = async (users, { getTh
   }
 
   const addEdge = (userAId, userBId, weight) => {
+    if (!isEdgeCreated(userAId, userBId)) {
+      edges.push([ userAId, userBId, weight ])
+    }
+
     const userAEdges = getOrCreateEdge(userAId)
     const userBEdges = getOrCreateEdge(userBId)
     userAEdges.set(userBId, weight)
@@ -471,7 +476,7 @@ const getEdgesForUsers = module.exports.getEdgesForUsers = async (users, { getTh
     }
   }
 
-  return edgesByUser
+  return [edgesByUser, edges]
 }
 
 const getEdgeWeight = module.exports.getEdgeWeight = function getEdgeWeight (outgoingMentions, incomingMentions, threadRelation) {
@@ -487,7 +492,9 @@ const getEdgeWeight = module.exports.getEdgeWeight = function getEdgeWeight (out
 }
 
 function visualiseEdges (edges, usersById) {
+  let c = 0
   for (const [userId, weightsById] of edges) {
+    if (c++ > 10) return
     const user = usersById.get(userId)
     console.log(`USER(${user.name})`)
 
