@@ -117,6 +117,12 @@ const graphSchema = mongoose.Schema({
     ref: 'Team',
     required: true,
   },
+
+  created: {
+    type: Date,
+    default: Date.now,
+    required: true,
+  },
 })
 module.exports.Graph = mongoose.model('Graph', graphSchema)
 
