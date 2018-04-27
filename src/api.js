@@ -1,6 +1,7 @@
 const R = require('ramda')
 const assert = require('assert')
 const axios = require('axios')
+const ora = require('ora')
 
 const models = require('./models')
 
@@ -391,13 +392,55 @@ module.exports.loadNetwork = async team_id => {
   const users = await models.User.find({ team: team._id })
   const usersById = keyByMap(R.prop('user_id'), users)
 
-  const edgesByUser = await getEdgesForUsers(
+  console.log('Computing edges...')
+  const [edgesByUser, edgeList] = await getEdgesForUsers(
     users,
     {
       usersById,
       getThreadRelationForUser: getThreadRelation
     }
   )
+
+  console.log('Creating graph...')
+  const graph = await new models.Graph({ description: 'v1', team: team._id }).save()
+
+  console.log('Creating nodes...')
+  const nodeResult = await models.Node.bulkWrite(users.map(user => ({
+    insertOne: {
+      document: {
+        graph: graph._id,
+        team: team._id,
+        user: user._id,
+      }
+    }
+  })))
+
+  const insertedIds = nodeResult.insertedIds
+  const nodeIdsByUserId = Object.keys(insertedIds)
+    .reduce((nodeMap, indexString) => {
+      const index = parseInt(indexString, 10)
+      if (isNaN(index)) {
+        throw new Error('Error parsing node creation result')
+      }
+
+      const nodeId = insertedIds[indexString]
+      const user = users[index]
+      nodeMap[user.user_id] = nodeId
+      return nodeMap
+    }, {})
+
+  console.log('Creating edges...')
+  const edgeResult = await models.Edge.bulkWrite(edgeList.map(([srcId, destId, weight]) => ({
+    insertOne: {
+      document: {
+        graph: graph._id,
+        team: team._id,
+        weight: weight,
+
+        vertices: [nodeIdsByUserId[srcId], nodeIdsByUserId[destId]]
+      }
+    }
+  })))
 }
 
 const getEdgesForUsers = module.exports.getEdgesForUsers = async (users, { getThreadRelationForUser, usersById }) => {
