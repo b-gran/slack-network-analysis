@@ -443,7 +443,7 @@ const getEdgesForUsers = module.exports.getEdgesForUsers = async (users, { getTh
       ),
       setUnion(
         new Set(threadRelation.keys()),
-        new Set(Object.keys(user.mentions))
+        new Set(Object.keys(user.mentions || {}))
       )
     )
 

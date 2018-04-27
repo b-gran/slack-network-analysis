@@ -248,6 +248,46 @@ describe('getEdgesForUsers', () => {
       }),
     }))
   })
+
+  it(`supports nil mentions`, async () => {
+    expect.assertions(1)
+
+    const foo = makeUser('foo')
+    delete foo.mentions
+
+    const bar = makeUser('bar')
+    delete bar.mentions
+
+    const threadRelationsByUserId = mapFromObject({
+      foo: mapFromObject({
+        bar: 7,
+      }),
+      bar: mapFromObject({
+        foo: 7,
+      })
+    })
+
+    const users = [foo, bar]
+    const usersById = Api.keyByMap(R.prop('user_id'), users)
+
+    const edges = await Api.getEdgesForUsers(users,
+      {
+        usersById,
+        getThreadRelationForUser: ({ user_id }) => threadRelationsByUserId.get(user_id),
+      }
+    )
+
+    const fooBarWeight = Api.getEdgeWeight(0, 0, threadRelationsByUserId.get('foo').get('bar'))
+
+    expect(edges).toEqual(mapFromObject({
+      foo: mapFromObject({
+        bar: fooBarWeight,
+      }),
+      bar: mapFromObject({
+        foo: fooBarWeight,
+      }),
+    }))
+  })
 })
 
 describe('getEdgeWeight', () => {
