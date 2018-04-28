@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "restart": "docker-compose exec server /bin/sh -c 'kill -s SIGHUP 1'",
-    "test": "jest"
+    "test": "jest",
+    "serve:frontend": "next dev src/frontend -p $FRONTEND_PORT"
   },
   "repository": {
     "type": "git",
@@ -21,6 +22,7 @@
     "@material-ui/icons": "^1.0.0-beta.43",
     "axios": "^0.18.0",
     "body-parser": "^1.18.2",
+    "cors": "^2.8.4",
     "cytoscape": "^3.2.11",
     "express": "^4.16.3",
     "glamor": "^2.20.40",
