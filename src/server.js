@@ -78,6 +78,13 @@ mongoose.connect(DATABASE_URL)
         .catch(next)
     })
 
+    // Get a single graph (includes all nodes and edges)
+    app.get('/graphs/:graphId', h(async (req, res) => {
+      console.log('PRELOAD GRAPH')
+      return res.json(await Api.preloadGraph(req.params.graphId))
+    }))
+
+    // Get all graphs (populated)
     app.get('/graphs', q({ team_id: fieldExists }), h(async (req, res, next) => {
       console.log('GRAPHS')
       const graphs = await Api.getGraphs(req.query.team_id)
@@ -121,7 +128,7 @@ mongoose.connect(DATABASE_URL)
     })
 
     server = http.createServer(app).listen(process.env.PORT)
-    console.log('Base server started')
+    console.log('Base server started \007')
   })
 
 // Returns an Express router that will run background jobs

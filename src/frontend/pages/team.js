@@ -181,6 +181,12 @@ const Team = observer(class _Team extends React.Component {
 
                     {this.props.graphs.map(graph => {
                       const date = new Date(graph.created).toLocaleString()
+                      const visualizeGraphPath = {
+                        pathname: '/visualize',
+                        query: {
+                          graph: graph._id,
+                        },
+                      }
                       return (
                         <ListItem key={graph.description}>
                           <ListItemText
@@ -188,9 +194,11 @@ const Team = observer(class _Team extends React.Component {
                             secondary={graph.description}/>
 
                           <ListItemSecondaryAction>
-                            <IconButton color="primary" className={viewGraphButton.toString()}>
-                              <OpenInNew />
-                            </IconButton>
+                            <Link href={visualizeGraphPath}>
+                              <IconButton color="primary" className={viewGraphButton.toString()}>
+                                <OpenInNew />
+                              </IconButton>
+                            </Link>
                           </ListItemSecondaryAction>
                         </ListItem>
                       )

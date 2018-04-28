@@ -29,19 +29,51 @@ import * as MProps from '../props'
 css.global('body', { margin: 0 })
 
 const initialState = observable({
+  error: undefined,
+  graph: undefined,
+  nodesById: undefined,
+  edgesById: undefined,
+  usersById: undefined,
 })
 
 const state = (module.hot && module.hot.data && module.hot.data.state) ?
   mergeInitialState(initialState, module.hot.data.state) :
   initialState
 
+const loadInitialData = action(graphId => axios.get(`${SERVER_URL}/graphs/${graphId}`)
+  .then(res => {
+    const { graph, nodes, edges, users } = res.data
+    state.graph = graph
+    state.nodesById = nodes
+    state.edgesById = edges
+    state.usersById = users
+  })
+  .catch(err => state.error = err)
+)
+
 const Visualize = observer(class _Visualize extends React.Component {
   static displayName = 'Visualize'
 
   static propTypes = {
+    graph: MProps.Graph,
+    nodesById: PropTypes.objectOf(MProps.Node),
+    edgesById: PropTypes.objectOf(MProps.Edge),
+    usersById: PropTypes.objectOf(MProps.User),
+    error: MProps.error,
+  }
+
+  componentDidMount () {
+    return loadInitialData(Router.query.graph)
   }
 
   render () {
+    const isLoaded = Boolean(
+      this.props.graph &&
+      this.props.nodesById &&
+      this.props.edgesById &&
+      this.props.usersById
+    )
+
     return (
       <React.Fragment>
         <Head>
@@ -49,6 +81,12 @@ const Visualize = observer(class _Visualize extends React.Component {
         </Head>
         <Div display="flex" flexDirection="column" justifyContent="center" alignItems="center"
              height="100vh">
+
+          {this.props.error && (
+            <Div backgroundColor="#ff7474">
+              <Typography>{ JSON.stringify(this.props.error, null, ' ') }</Typography>
+            </Div>
+          )}
         </Div>
       </React.Fragment>
     )

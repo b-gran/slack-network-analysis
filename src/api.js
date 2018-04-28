@@ -89,6 +89,32 @@ module.exports.getGraphs = async team_id => {
     .populate('team')
 }
 
+// Load a graph and all of the data needed to view it:
+//    nodes
+//    edges
+//    users
+module.exports.preloadGraph = async graphId => {
+  const graph = await models.Graph.findById(graphId).populate('team')
+  const teamId = graph.team._id
+
+  const [ nodes, edges, users ] = await Promise.all([
+    models.Node.find({ graph: graphId }),
+    models.Edge.find({ graph: graphId }),
+    models.User.find({ team: teamId }),
+  ])
+
+  const nodesById = keyBy(R.prop('_id'), nodes)
+  const edgesById = keyBy(R.prop('_id'), edges)
+  const usersById = keyBy(R.prop('_id'), users)
+
+  return {
+    graph,
+    nodes: nodesById,
+    edges: edgesById,
+    users: usersById,
+  }
+}
+
 const getChannels = module.exports.getChannels = async teamId => {
   const team = await getTeamByTeamId(teamId)
   return models.Channel.find({ team: team._id })
@@ -717,6 +743,14 @@ const keyByMap = module.exports.keyByMap = function keyByMap (iteratee, iterable
     map.set(iteratee(element), element)
   }
   return map
+}
+
+function keyBy (iteratee, iterable) {
+  const object = {}
+  for (const element of iterable) {
+    object[iteratee(element)] = element
+  }
+  return object
 }
 
 function delay (duration) {
