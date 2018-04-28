@@ -14,15 +14,12 @@ import axios from 'axios'
 import Card, { CardContent } from 'material-ui/Card'
 import Typography from 'material-ui/Typography'
 import Button from 'material-ui/Button'
-import ButtonBase from 'material-ui/ButtonBase'
-import List, { ListItem, ListItemText, ListSubheader } from 'material-ui/List'
+import IconButton from 'material-ui/IconButton'
+import List, { ListItem, ListItemText, ListSubheader, ListItemSecondaryAction } from 'material-ui/List'
 import Divider from 'material-ui/Divider'
-import Modal from 'material-ui/Modal'
-import TextField from 'material-ui/TextField'
-import { FormControl, FormLabel } from 'material-ui/Form'
+import { FormLabel } from 'material-ui/Form'
 import green from 'material-ui/colors/green'
-import { ListItemIcon } from 'material-ui/List'
-import { DeviceHub } from '@material-ui/icons'
+import { DeviceHub, OpenInNew } from '@material-ui/icons'
 import { createMuiTheme } from 'material-ui/styles'
 
 import { Div, Span } from 'glamorous'
@@ -182,24 +179,26 @@ const Team = observer(class _Team extends React.Component {
                       </Div>
                     </ListSubheader>
 
-                    {this.props.graphs.map(graph => (
-                      <ListItem key={graph.description}>
-                        <ListItemText primary={graph.description}/>
-                      </ListItem>
-                    ))}
+                    {this.props.graphs.map(graph => {
+                      const date = new Date(graph.created).toLocaleString()
+                      return (
+                        <ListItem key={graph.description}>
+                          <ListItemText
+                            primary={<Typography>{date}</Typography>}
+                            secondary={graph.description}/>
+
+                          <ListItemSecondaryAction>
+                            <IconButton color="primary" className={viewGraphButton.toString()}>
+                              <OpenInNew />
+                            </IconButton>
+                          </ListItemSecondaryAction>
+                        </ListItem>
+                      )
+                    })}
                   </List>
                 </Div>
               </Div>
             )}
-
-            {/* TODO: remove after buttons are added to graph list */}
-            {/*<Divider/>*/}
-
-            {/*<Link href={{ pathname: '/visualize' }}>*/}
-              {/*<ButtonBase className={visualizeButton.toString()} focusRipple>*/}
-                {/*<Typography variant="button">Visualize</Typography>*/}
-              {/*</ButtonBase>*/}
-            {/*</Link>*/}
 
             {this.props.error && (
               <Div backgroundColor="#ff7474">
@@ -213,13 +212,8 @@ const Team = observer(class _Team extends React.Component {
   }
 })
 
-const visualizeButton = css(important({
-  padding: `${theme.spacing.unit}px ${2*theme.spacing.unit}px`,
-  backgroundColor: green['300'],
-  color: theme.palette.primary.contrastText,
-  display: `block`,
-  textAlign: `center`,
-  width: `100%`,
+const viewGraphButton = css(important({
+  color: green['300'],
 }))
 
 const valignMiddle = css(important({
