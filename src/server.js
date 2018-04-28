@@ -52,6 +52,8 @@ Promise.all([
 
     app.use(bodyParser.json())
 
+    // Proxy for the slack auth.test API. Returns details for a team/user account based on a
+    // legacy-type Slack token.
     app.get('/slack/getTeamData', q({ token: fieldExists }), (req, res, next) => {
       console.log('SLACK TEAM DATA')
       axios({
@@ -64,6 +66,7 @@ Promise.all([
         .catch(err => res.status(400).json(httpError(400, 'bad slack response', err)))
     })
 
+    // Get a specific by its id. The id is the Slack id, not the MongoDB _id.
     app.get('/teams/:teamId', (req, res, next) => {
       console.log('TEAM BY ID')
       Api.getTeamByTeamId(req.params.teamId)
@@ -73,6 +76,7 @@ Promise.all([
         .catch(next)
     })
 
+    // Get all teams.
     app.get('/teams', (req, res, next) => {
       console.log('TEAMS')
       Api.getTeams()
@@ -82,6 +86,7 @@ Promise.all([
         .catch(next)
     })
 
+    // Create a team. Passes the request body directly to the model constructor.
     app.post('/teams', (req, res, next) => {
       console.log(`CREATING TEAM`, req.body)
       Api.createTeam(req.body)
@@ -90,6 +95,12 @@ Promise.all([
         })
         .catch(next)
     })
+
+    app.get('/graphs', q({ team_id: fieldExists }), h(async (req, res, next) => {
+      console.log('GRAPHS')
+      const graphs = await Api.getGraphs(req.query.team_id)
+      return res.json(graphs)
+    }))
 
     app.post('/jobs/users', job(
       teamId => remapError('error loading users')(Api.loadUsersForTeam(teamId)),
