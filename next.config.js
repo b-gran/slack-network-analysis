@@ -1,5 +1,9 @@
+const path = require('path')
+
 module.exports = {
+  dir: path.join(__dirname, 'frontend'),
+  dev: process.env.NODE_ENV !== 'production',
   publicRuntimeConfig: {
-    SLACK_TOKEN: process.env.SLACK_TOKEN,
+    SERVER_URL: `http://localhost:${process.env.PORT}`,
   }
 }

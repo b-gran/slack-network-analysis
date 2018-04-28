@@ -2,13 +2,12 @@ const R = require('ramda')
 
 const http = require('http')
 const assert = require('assert')
-const path = require('path')
 const express = require('express')
+const cors = require('cors')
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
 const axios = require('axios')
 const httpError = require('./error').httpError
-const next = require('next')
 
 const Api = require('./api')
 const models = require('./models')
@@ -20,12 +19,6 @@ process.once('SIGUSR2', () => {
   })
 })
 
-const SLACK_TOKEN = process.env.SLACK_TOKEN
-if (!SLACK_TOKEN) {
-  console.error('No slack token provided.')
-  process.exit(3)
-}
-
 const DATABASE_URL = process.env.DATABASE_URL
 if (!DATABASE_URL) {
   console.error('No database URL')
@@ -34,22 +27,11 @@ if (!DATABASE_URL) {
 console.log(`Connecting to mongodb at ${DATABASE_URL}`)
 
 let server
-const nextDirectory = path.join(__dirname, 'frontend')
-const nextApp = next({
-  dir: nextDirectory,
-  dev: process.env.NODE_ENV !== 'production',
-})
-console.log(`Serving next from ${nextDirectory}`)
-
-Promise.all([
-  nextApp.prepare(),
-  mongoose.connect(DATABASE_URL),
-])
-  .then(([nextInstance, mongooseConnection]) => {
-    const handler = nextApp.getRequestHandler()
-
+mongoose.connect(DATABASE_URL)
+  .then(() => {
     const app = express()
 
+    app.use(cors())
     app.use(bodyParser.json())
 
     // Proxy for the slack auth.test API. Returns details for a team/user account based on a
@@ -132,9 +114,6 @@ Promise.all([
       'network_job'
     ))
 
-    // Everything else gets passed through to Next
-    app.use((req, res) => handler(req, res))
-
     app.use((err, req, res, next) => {
       console.log('ERROR')
       console.log(err)
@@ -216,9 +195,6 @@ async function shutdown () {
   if (server) {
     await close(server)
   }
-
-  await close(nextApp.hotReloader.webpackDevMiddleware)
-  await nextApp.close()
 }
 
 function close (closeable) {

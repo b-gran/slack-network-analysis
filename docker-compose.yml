@@ -14,7 +14,6 @@ services:
     environment:
       - PORT=8080
       - DATABASE_URL=mongodb://db/sna
-      - SLACK_TOKEN=${SLACK_TOKEN}
     ports:
       - "8080:8080"
       - "127.0.0.1:9259:9259" # V8 inspector
@@ -25,6 +24,25 @@ services:
 
     # Starts the server & watches for changes (with debugger support)
     command: nodemon -i src/frontend/ --force-fork --verbose --inspect=0.0.0.0:9259 src/server.js
+
+  frontend-server:
+    # Allows colored text.
+    tty: true
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    hostname: frontend-server
+    environment:
+      - PORT=8080
+      - FRONTEND_PORT=8081
+    ports:
+      - "8081:8081"
+    volumes:
+      - npm:/home/.npm/_cacache/
+      - ./:/usr/src/app
+
+    # Start the front-end Next.js server
+    command: npm run serve:frontend
 
   db:
     image: mongo:3.6
