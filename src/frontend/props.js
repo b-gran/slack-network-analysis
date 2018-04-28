@@ -19,6 +19,12 @@ export const Team = PropTypes.shape({
   network_job: JobData.isRequired,
 })
 
+export const Graph = PropTypes.shape({
+  description: PropTypes.string,
+  team: Team.isRequired,
+  created: PropTypes.string.isRequird,
+})
+
 export const error = PropTypes.oneOfType([
   PropTypes.string,
   PropTypes.object,

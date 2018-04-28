@@ -15,15 +15,17 @@ import Card, { CardContent } from 'material-ui/Card'
 import Typography from 'material-ui/Typography'
 import Button from 'material-ui/Button'
 import ButtonBase from 'material-ui/ButtonBase'
-import List, { ListItem, ListItemText } from 'material-ui/List'
+import List, { ListItem, ListItemText, ListSubheader } from 'material-ui/List'
 import Divider from 'material-ui/Divider'
 import Modal from 'material-ui/Modal'
 import TextField from 'material-ui/TextField'
 import { FormControl, FormLabel } from 'material-ui/Form'
 import green from 'material-ui/colors/green'
+import { ListItemIcon } from 'material-ui/List'
+import { DeviceHub } from '@material-ui/icons'
 import { createMuiTheme } from 'material-ui/styles'
 
-import { Div } from 'glamorous'
+import { Div, Span } from 'glamorous'
 
 import { observable, action } from 'mobx'
 import { PropTypes as MobxPropTypes, observer, inject, Provider } from 'mobx-react'
@@ -38,7 +40,7 @@ css.global('body', { margin: 0 })
 
 const initialState = observable({
   team: undefined,
-  isLoaded: false,
+  graphs: undefined,
   error: undefined,
 })
 
@@ -47,12 +49,17 @@ const state = (module.hot && module.hot.data && module.hot.data.state) ?
   initialState
 
 const getTeam = action(teamId => axios.get(`${SERVER_URL}/teams/${teamId}`)
-  .then(res => {
-    state.team = res.data
-    state.isLoaded = true
-  })
+  .then(res => state.team = res.data)
   .catch(err => state.error = err)
 )
+
+const loadInitialData = action(teamId => Promise.all([
+  axios.get(`${SERVER_URL}/teams/${teamId}`).then(R.prop('data')),
+  axios.get(`${SERVER_URL}/graphs?team_id=${teamId}`).then(R.prop('data')),
+]).then(([team, graphs]) => {
+  state.team = team
+  state.graphs = graphs
+}).catch(err => state.error = err))
 
 // Starts a job and updates the team data immediately after initiating the request.
 const runJob = action((jobName, teamId) => {
@@ -72,7 +79,7 @@ const Team = observer(class _Team extends React.Component {
 
   static propTypes = {
     team: MProps.Team,
-    isLoaded: PropTypes.bool,
+    graphs: MobxPropTypes.observableArrayOf(MProps.Graph),
     error: MProps.error,
   }
 
@@ -87,14 +94,16 @@ const Team = observer(class _Team extends React.Component {
 
   componentDidMount () {
     this.teamUpdateTimer = setInterval(() => getTeam(Router.query.team_id), 5000)
-    return getTeam(Router.query.team_id)
+    return loadInitialData(Router.query.team_id)
   }
   
   render () {
+    const isLoaded = Boolean(this.props.team && this.props.graphs)
+
     return (
       <React.Fragment>
         <Head>
-          <title>Slack Network Analysis{this.props.isLoaded && `: ${this.props.team.team}`}</title>
+          <title>Slack Network Analysis{isLoaded && `: ${this.props.team.team}`}</title>
         </Head>
         <Div display="flex" flexDirection="column" justifyContent="center" alignItems="center"
              height="100vh">
@@ -105,71 +114,92 @@ const Team = observer(class _Team extends React.Component {
 
             <Divider/>
 
-            {!this.props.isLoaded && (
+            {!isLoaded && (
               <CardContent>
                 <Typography>Loading...</Typography>
               </CardContent>
             )}
 
-            {this.props.isLoaded && (
-              <Div padding="20px 10px">
-                <Div display="flex">
-                  <Div margin="0 10px">
-                    <FormLabel>Team name</FormLabel>
-                    <Typography variant="body2">{this.props.team.team}</Typography>
+            {isLoaded && (
+              <Div display="flex" justifyContent="flex-start" alignItems="stretch">
+                <Div padding="20px 10px">
+                  <Div display="flex">
+                    <Div margin="0 10px">
+                      <FormLabel>Team name</FormLabel>
+                      <Typography variant="body2">{this.props.team.team}</Typography>
+                    </Div>
+
+                    <Div margin="0 10px">
+                      <FormLabel>Team id</FormLabel>
+                      <Typography variant="body2">{this.props.team.team_id}</Typography>
+                    </Div>
+
+                    <Div margin="0 10px">
+                      <FormLabel>URL</FormLabel>
+                      <a href={this.props.team.url}>
+                        <Typography variant="body2">{this.props.team.url}</Typography>
+                      </a>
+                    </Div>
                   </Div>
 
-                  <Div margin="0 10px">
-                    <FormLabel>Team id</FormLabel>
-                    <Typography variant="body2">{this.props.team.team_id}</Typography>
+                  <Div display="flex">
+                    <Job
+                      jobData={this.props.team.user_data}
+                      label="User data from Slack"
+                      onRunJob={() => runJob('users', this.props.team.team_id)} />
+
+                    <Job
+                      jobData={this.props.team.message_data}
+                      label="Message data from Slack"
+                      onRunJob={() => runJob('messages', this.props.team.team_id)} />
                   </Div>
 
-                  <Div margin="0 10px">
-                    <FormLabel>URL</FormLabel>
-                    <a href={this.props.team.url}>
-                      <Typography variant="body2">{this.props.team.url}</Typography>
-                    </a>
+                  <Div display="flex">
+                    <Job
+                      jobData={this.props.team.channel_data}
+                      label="Channel data from Slack"
+                      onRunJob={() => runJob('channels', this.props.team.team_id)}/>
+
+                    <Job
+                      jobData={this.props.team.mention_job}
+                      label="Compute mention counts"
+                      onRunJob={() => runJob('mentions', this.props.team.team_id)}/>
                   </Div>
+
+                  <Job
+                    jobData={this.props.team.network_job}
+                    label="Generate network"
+                    onRunJob={() => runJob('network', this.props.team.team_id)} />
                 </Div>
 
-                <Div display="flex">
-                  <Job
-                    jobData={this.props.team.user_data}
-                    label="User data from Slack"
-                    onRunJob={() => runJob('users', this.props.team.team_id)} />
+                <Div borderLeft="1px solid rgba(0, 0, 0, 0.12)" minWidth="200px">
+                  <List>
+                    <ListSubheader>
+                      {/*Inner div needed so we can put vertical-align on the contents*/}
+                      <Div>
+                        <DeviceHub className={valignMiddle.toString()} />
+                        <Span verticalAlign="middle">Graphs</Span>
+                      </Div>
+                    </ListSubheader>
 
-                  <Job
-                    jobData={this.props.team.message_data}
-                    label="Message data from Slack"
-                    onRunJob={() => runJob('messages', this.props.team.team_id)} />
+                    {this.props.graphs.map(graph => (
+                      <ListItem key={graph.description}>
+                        <ListItemText primary={graph.description}/>
+                      </ListItem>
+                    ))}
+                  </List>
                 </Div>
-
-                <Div display="flex">
-                  <Job
-                    jobData={this.props.team.channel_data}
-                    label="Channel data from Slack"
-                    onRunJob={() => runJob('channels', this.props.team.team_id)}/>
-
-                  <Job
-                    jobData={this.props.team.mention_job}
-                    label="Compute mention counts"
-                    onRunJob={() => runJob('mentions', this.props.team.team_id)}/>
-                </Div>
-
-                <Job
-                  jobData={this.props.team.network_job}
-                  label="Generate network"
-                  onRunJob={() => runJob('network', this.props.team.team_id)} />
               </Div>
             )}
 
-            <Divider/>
+            {/* TODO: remove after buttons are added to graph list */}
+            {/*<Divider/>*/}
 
-            <Link href={{ pathname: '/visualize' }}>
-              <ButtonBase className={visualizeButton.toString()} focusRipple>
-                <Typography variant="button">Visualize</Typography>
-              </ButtonBase>
-            </Link>
+            {/*<Link href={{ pathname: '/visualize' }}>*/}
+              {/*<ButtonBase className={visualizeButton.toString()} focusRipple>*/}
+                {/*<Typography variant="button">Visualize</Typography>*/}
+              {/*</ButtonBase>*/}
+            {/*</Link>*/}
 
             {this.props.error && (
               <Div backgroundColor="#ff7474">
@@ -190,6 +220,10 @@ const visualizeButton = css(important({
   display: `block`,
   textAlign: `center`,
   width: `100%`,
+}))
+
+const valignMiddle = css(important({
+  verticalAlign: 'middle',
 }))
 
 const WIndex = inject(stores => ({ ...stores.state }))(Team)
