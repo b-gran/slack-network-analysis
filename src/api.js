@@ -1,7 +1,6 @@
 const R = require('ramda')
 const assert = require('assert')
 const axios = require('axios')
-const ora = require('ora')
 
 const models = require('./models')
 
@@ -78,6 +77,16 @@ const getTeamByTeamId = module.exports.getTeamByTeamId = async teamId => {
 
 module.exports.createTeam = async team => {
   return (new models.Team(team)).save()
+}
+
+// Get all graphs with the team field populated.
+// Returns the graphs sorted by date in descending order.
+module.exports.getGraphs = async team_id => {
+  const { team } = await slackApiForTeam(team_id)
+  return await models.Graph
+    .find({ team: team._id, })
+    .sort({ created: -1 })
+    .populate('team')
 }
 
 const getChannels = module.exports.getChannels = async teamId => {
