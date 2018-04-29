@@ -22,8 +22,14 @@ import { observable, action } from 'mobx'
 import { PropTypes as MobxPropTypes, observer, inject, Provider } from 'mobx-react'
 import * as R from 'ramda'
 
+import cytoscape from 'cytoscape'
+import cola from 'cytoscape-cola'
+
 import { mergeInitialState, SERVER_URL } from '../config'
 import * as MProps from '../props'
+
+// Graph physics plugin
+cytoscape.use(cola)
 
 // Resets
 css.global('body', { margin: 0 })
@@ -51,6 +57,7 @@ const loadInitialData = action(graphId => axios.get(`${SERVER_URL}/graphs/${grap
   .catch(err => state.error = err)
 )
 
+
 const Visualize = observer(class _Visualize extends React.Component {
   static displayName = 'Visualize'
 
@@ -62,17 +69,89 @@ const Visualize = observer(class _Visualize extends React.Component {
     error: MProps.error,
   }
 
+  graphContainer = null
+  graphVisualisation = null
+
   componentDidMount () {
     return loadInitialData(Router.query.graph)
   }
 
-  render () {
-    const isLoaded = Boolean(
+  isLoaded () {
+    return Boolean(
       this.props.graph &&
       this.props.nodesById &&
       this.props.edgesById &&
       this.props.usersById
     )
+  }
+
+  renderGraph () {
+    const edgeLengthVal = 45
+    const layoutParams = {
+      name: 'cola',
+      nodeSpacing: 20,
+      edgeLengthVal,
+      animate: true,
+      randomize: true,
+      maxSimulationTime: 30000,
+      edgeLength: edge => edgeLengthVal / edge.data('weight'),
+    };
+
+    const nodes = Object.keys(this.props.nodesById).map(nodeId => {
+      const node = this.props.nodesById[nodeId]
+      return ({
+        group: 'nodes',
+        data: {
+          id: node._id,
+          name: this.props.usersById[node.user].name,
+        },
+      })
+    })
+
+    const edges = Object.keys(this.props.edgesById).map(edgeId => {
+      const edge = this.props.edgesById[edgeId]
+      return ({
+        group: 'edges',
+        data: {
+          id: edge._id,
+          source: edge.vertices[0],
+          target: edge.vertices[1],
+          weight: edge.weight,
+        },
+      })
+    }).filter(edge => edge.data.weight < 0.1)
+
+    const cyGraph = cytoscape({
+      container: this.graphContainer,
+      elements: [ ...nodes, ...edges ],
+    })
+
+    const layout = cyGraph.layout(layoutParams)
+    layout.run()
+
+    return cyGraph
+  }
+
+  componentDidUpdate (prevProps) {
+    const shouldUpdateGraph = this.isLoaded() && ((
+      prevProps.graph !== this.props.graph ||
+      prevProps.nodesById !== this.props.nodesById ||
+      prevProps.edgesById !== this.props.edgesById ||
+      prevProps.usersById !== this.props.usersById
+    ) || !this.graphVisualisation)
+
+    if (shouldUpdateGraph && this.graphVisualisation) {
+      this.graphVisualisation.destroy()
+      this.graphVisualisation = null
+    }
+
+    if (shouldUpdateGraph) {
+      this.graphVisualisation = this.renderGraph()
+    }
+  }
+
+  render () {
+    const isLoaded = this.isLoaded()
 
     return (
       <React.Fragment>
@@ -82,11 +161,10 @@ const Visualize = observer(class _Visualize extends React.Component {
         <Div display="flex" flexDirection="column" justifyContent="center" alignItems="center"
              height="100vh">
 
-          {this.props.error && (
-            <Div backgroundColor="#ff7474">
-              <Typography>{ JSON.stringify(this.props.error, null, ' ') }</Typography>
-            </Div>
-          )}
+          <div
+            style={{ height: '100vh;', width: '100vw;' }}
+            ref={graphContainer => this.graphContainer = graphContainer} />
+
         </Div>
       </React.Fragment>
     )
