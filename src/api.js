@@ -144,7 +144,14 @@ module.exports.loadMessagesForTeam = async team_id => {
   const saveMessages = Promise.resolve()
 
   for (const channel of channels) {
-    if (channel.name.match(/alerts/) || channel.name.match(/jira$/) || channel.name.match(/jiraall/)) {
+    if (
+      channel.name.match(/alerts/) ||
+      channel.name.match(/jira$/) ||
+      channel.name.match(/jiraall/) ||
+      channel.name.match(/design-tasks/) ||
+      channel.name.match(/notify$/) ||
+      channel.name.match(/notifications$/)
+    ) {
       console.log(`Skipping channel ${channel.name}`)
       channelsRemaining = channelsRemaining - 1
       continue
@@ -189,6 +196,7 @@ module.exports.loadMessagesForTeam = async team_id => {
     } catch (err) {
       console.error(`Failed channel ${channel.name}`)
       failedChannels.push(channel.name)
+      console.log(err)
     } finally {
       channelsRemaining = channelsRemaining - 1
     }
@@ -685,6 +693,10 @@ async function followCursor (makeRequestWithCursor, accumulate) {
 
     nextCursor = getNextCursor(response.data)
     moreMessages = isNonEmptyString(nextCursor)
+
+    if (moreMessages) {
+      await delay(1000)
+    }
   }
 
   return result
@@ -702,7 +714,7 @@ async function retryWithBackoff (operation, retries = 7) {
     } catch (err) {
       lastError = err
 
-      const duration = Math.pow(2, retries - tries)
+      const duration = 5 + Math.pow(2, retries - tries)
       console.warn(`Rate limited. Waiting ${duration} seconds...`)
       tries = tries - 1
       await delay(duration * 1000)
