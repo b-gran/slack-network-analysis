@@ -86,15 +86,18 @@ const Visualize = observer(class _Visualize extends React.Component {
   }
 
   renderGraph () {
-    const edgeLengthVal = 45
+    const edgeLengthVal = 20000
     const layoutParams = {
-      name: 'cola',
-      nodeSpacing: 20,
-      edgeLengthVal,
       animate: true,
-      randomize: true,
-      maxSimulationTime: 30000,
-      edgeLength: edge => edgeLengthVal / edge.data('weight'),
+      avoidOverlap: true,
+
+      // Edge length is linear in node weight.
+      edgeLength: edge => edgeLengthVal * edge.data('weight'),
+
+      // Constantly run physics, but don't readjust the viewport.
+      name: 'cola',
+      fit: false,
+      infinite: true,
     };
 
     const nodes = Object.keys(this.props.nodesById).map(nodeId => {
@@ -119,13 +122,50 @@ const Visualize = observer(class _Visualize extends React.Component {
           weight: edge.weight,
         },
       })
-    }).filter(edge => edge.data.weight < 0.1)
+    }).filter(edge => edge.data.weight < 0.03)
+
+    const data = [ ...nodes, ...edges ]
+
+    // Just for doing calculations on the data.
+    const dataOnly = cytoscape({
+      elements: data,
+    })
+
+    // Generates a function to compute the degree centrality of nodes based on edge weight and
+    // degree of the node.
+    const getDegreeCentrality = dataOnly.$().dcn({
+      alpha: 0.5,
+      weight: edge => edge.data('weight'),
+    }).degree
+
+    // Compute degree centrality for every node and store as node.data.score
+    dataOnly.nodes().forEach(node => {
+      node.data('score', getDegreeCentrality(node))
+    })
 
     const cyGraph = cytoscape({
       container: this.graphContainer,
       elements: [ ...nodes, ...edges ],
+      style: [
+        {
+          selector: 'node',
+          style: {
+            "width": "mapData(score, 0, 1, 20, 60)",
+            "height": "mapData(score, 0, 1, 20, 60)",
+            content: node => `${node.data('name')} (${node.data('score')})`
+          }
+        }
+      ]
     })
 
+    // Prune the graph
+    const nodesWithoutEdges = cyGraph.nodes().filter(node => {
+      const edges = node.connectedEdges()
+      return edges.length === 0
+    })
+    nodesWithoutEdges.remove()
+
+    // Start the visualization and physics sim
     const layout = cyGraph.layout(layoutParams)
     layout.run()
 
