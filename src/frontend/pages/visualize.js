@@ -1,3 +1,5 @@
+import '../rehydrate'
+
 import React from 'react'
 import PropTypes from 'prop-types'
 import Head from 'next/head'
@@ -56,7 +58,6 @@ const loadInitialData = action(graphId => axios.get(`${SERVER_URL}/graphs/${grap
   })
   .catch(err => state.error = err)
 )
-
 
 const Visualize = observer(class _Visualize extends React.Component {
   static displayName = 'Visualize'
@@ -198,13 +199,19 @@ const Visualize = observer(class _Visualize extends React.Component {
         <Head>
           <title>Slack Network Analysis: Visualization</title>
         </Head>
-        <Div display="flex" flexDirection="column" justifyContent="center" alignItems="center"
-             height="100vh">
+        <Div display="flex" flexDirection="row" justifyContent="center" alignItems="center"
+             height="100vh" position="relative">
 
           <div
-            style={{ height: '100vh;', width: '100vw;' }}
+            style={{ height: '100vh;', width: 'calc(100vw - 300px);' }}
             ref={graphContainer => this.graphContainer = graphContainer} />
 
+          <Div height="100vh" width="300px" flexGrow="1" background="blue">
+            <Button variant="raised" color="primary" onClick={() => {
+            }}>
+              Serialize
+            </Button>
+          </Div>
         </Div>
       </React.Fragment>
     )

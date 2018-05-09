@@ -1,7 +1,5 @@
-import { css, rehydrate } from 'glamor'
-if (typeof window !== 'undefined') {
-  rehydrate(window.__NEXT_DATA__.ids)
-}
+import '../rehydrate'
+import { css } from 'glamor'
 
 import React from 'react'
 import PropTypes from 'prop-types'
