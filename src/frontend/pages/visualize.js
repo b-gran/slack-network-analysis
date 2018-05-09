@@ -3,26 +3,17 @@ import '../rehydrate'
 import React from 'react'
 import PropTypes from 'prop-types'
 import Head from 'next/head'
-import Link from 'next/link'
 import Router from 'next/router'
 
 import axios from 'axios'
 
-import Card, { CardContent } from 'material-ui/Card'
-import Typography from 'material-ui/Typography'
 import Button from 'material-ui/Button'
-import List, { ListItem, ListItemText } from 'material-ui/List'
-import Divider from 'material-ui/Divider'
-import Modal from 'material-ui/Modal'
-import TextField from 'material-ui/TextField'
-import { FormControl, FormLabel } from 'material-ui/Form'
 
 import { Div } from 'glamorous'
 import { css } from 'glamor'
 
 import { observable, action } from 'mobx'
-import { PropTypes as MobxPropTypes, observer, inject, Provider } from 'mobx-react'
-import * as R from 'ramda'
+import { observer, inject, Provider } from 'mobx-react'
 
 import cytoscape from 'cytoscape'
 import cola from 'cytoscape-cola'
