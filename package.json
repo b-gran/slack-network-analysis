@@ -6,7 +6,8 @@
   "scripts": {
     "restart": "docker-compose exec server /bin/sh -c 'kill -s SIGHUP 1'",
     "test": "jest",
-    "serve:frontend": "next dev src/frontend -p $FRONTEND_PORT"
+    "serve:frontend": "next dev src/frontend -p $FRONTEND_PORT",
+    "dbrestore": "__restore(){ cat $1 | docker-compose exec db mongorestore --gzip ;}; __restore"
   },
   "repository": {
     "type": "git",
@@ -33,10 +34,11 @@
     "mobx": "^4.2.0",
     "mobx-react": "^5.0.0",
     "mongoose": "^5.0.15",
-    "next": "^5.1.0",
+    "next": "^6.0.0",
     "prop-types": "^15.6.1",
     "ramda": "^0.25.0",
     "react": "^16.3.1",
-    "react-dom": "^16.3.1"
+    "react-dom": "^16.3.1",
+    "react-jss": "^8.4.0"
   }
 }
