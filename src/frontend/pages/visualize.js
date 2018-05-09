@@ -20,6 +20,7 @@ import cola from 'cytoscape-cola'
 
 import { mergeInitialState, SERVER_URL } from '../config'
 import * as MProps from '../props'
+import { important } from '../utils'
 
 // Graph physics plugin
 cytoscape.use(cola)
@@ -194,7 +195,7 @@ const Visualize = observer(class _Visualize extends React.Component {
              height="100vh" position="relative">
 
           <div
-            style={{ height: '100vh;', width: 'calc(100vw - 300px);' }}
+            className={graphContainer.toString()}
             ref={graphContainer => this.graphContainer = graphContainer} />
 
           <Div height="100vh" width="300px" flexGrow="1" background="blue">
@@ -208,6 +209,11 @@ const Visualize = observer(class _Visualize extends React.Component {
     )
   }
 })
+
+const graphContainer = css(important({
+  height: '100vh',
+  width: 'calc(100vw - 300px)'
+}))
 
 const WVisualize = inject(stores => ({ ...stores.state }))(Visualize)
 
