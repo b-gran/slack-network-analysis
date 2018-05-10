@@ -23,6 +23,8 @@
     "@material-ui/icons": "^1.0.0-beta.43",
     "@zeit/next-css": "^0.2.0",
     "axios": "^0.18.0",
+    "babel-core": "^7.0.0-bridge.0",
+    "babel-jest": "^22.4.3",
     "body-parser": "^1.18.2",
     "cors": "^2.8.4",
     "cytoscape": "^3.2.11",

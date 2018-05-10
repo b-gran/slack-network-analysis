@@ -8,3 +8,10 @@ export const important = style => {
 
   return `${style} !important`
 }
+
+export const hasProps = R.pipe(
+  R.map(R.unary(R.has)),
+  R.allPass,
+  R.ifElse(R.isNil, R.F)
+)
+
