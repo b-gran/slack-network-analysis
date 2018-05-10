@@ -7,13 +7,15 @@ import Router from 'next/router'
 
 import axios from 'axios'
 
-import Button from 'material-ui/Button'
+import Typography from 'material-ui/Typography'
+import Slider from 'rc-slider'
+import style from 'rc-slider/dist/rc-slider.css'
 
-import { Div } from 'glamorous'
+import { Div, Input } from 'glamorous'
 import { css } from 'glamor'
 
 import { observable, action } from 'mobx'
-import { observer, inject, Provider } from 'mobx-react'
+import { PropTypes as MobxPropTypes, observer, inject, Provider } from 'mobx-react'
 
 import cytoscape from 'cytoscape'
 import cola from 'cytoscape-cola'
@@ -21,6 +23,18 @@ import cola from 'cytoscape-cola'
 import { mergeInitialState, SERVER_URL } from '../config'
 import * as MProps from '../props'
 import { important } from '../utils'
+
+import * as R from 'ramda'
+import * as Rx from 'rxjs'
+import * as operators from 'rxjs/operators'
+import * as Utils from '../utils'
+
+import * as Recompose from 'recompose'
+
+const componentFromStream = Recompose.componentFromStreamWithConfig({
+  fromESObservable: Rx.from,
+  toESObservable: R.identity,
+})
 
 // Graph physics plugin
 cytoscape.use(cola)
@@ -34,6 +48,11 @@ const initialState = observable({
   nodesById: undefined,
   edgesById: undefined,
   usersById: undefined,
+
+  settings: {
+    maxEdgeWeight: String(0.03),
+    edgeLength: String(20000),
+  },
 })
 
 const state = (module.hot && module.hot.data && module.hot.data.state) ?
@@ -51,35 +70,33 @@ const loadInitialData = action(graphId => axios.get(`${SERVER_URL}/graphs/${grap
   .catch(err => state.error = err)
 )
 
-const Visualize = observer(class _Visualize extends React.Component {
-  static displayName = 'Visualize'
+const updateSettings = action(partialSettingsUpdate =>
+  state.settings = R.merge(
+    state.settings,
+    partialSettingsUpdate
+  )
+)
+
+class Network extends React.Component {
+  static displayName = 'Network'
 
   static propTypes = {
-    graph: MProps.Graph,
-    nodesById: PropTypes.objectOf(MProps.Node),
-    edgesById: PropTypes.objectOf(MProps.Edge),
-    usersById: PropTypes.objectOf(MProps.User),
-    error: MProps.error,
+    graph: MProps.Graph.isRequired,
+    nodesById: PropTypes.objectOf(MProps.Node).isRequired,
+    edgesById: PropTypes.objectOf(MProps.Edge).isRequired,
+    usersById: PropTypes.objectOf(MProps.User).isRequired,
+
+    settings: PropTypes.shape({
+      maxEdgeWeight: PropTypes.number.isRequired,
+      edgeLength: PropTypes.number.isRequired,
+    }).isRequired,
   }
 
   graphContainer = null
   graphVisualisation = null
 
-  componentDidMount () {
-    return loadInitialData(Router.query.graph)
-  }
-
-  isLoaded () {
-    return Boolean(
-      this.props.graph &&
-      this.props.nodesById &&
-      this.props.edgesById &&
-      this.props.usersById
-    )
-  }
-
   renderGraph () {
-    const edgeLengthVal = 20000
+    const edgeLengthVal = this.props.settings.edgeLength
     const layoutParams = {
       animate: true,
       avoidOverlap: true,
@@ -115,7 +132,7 @@ const Visualize = observer(class _Visualize extends React.Component {
           weight: edge.weight,
         },
       })
-    }).filter(edge => edge.data.weight < 0.03)
+    }).filter(edge => edge.data.weight < this.props.settings.maxEdgeWeight)
 
     const data = [ ...nodes, ...edges ]
 
@@ -165,27 +182,90 @@ const Visualize = observer(class _Visualize extends React.Component {
     return cyGraph
   }
 
-  componentDidUpdate (prevProps) {
-    const shouldUpdateGraph = this.isLoaded() && ((
-      prevProps.graph !== this.props.graph ||
-      prevProps.nodesById !== this.props.nodesById ||
-      prevProps.edgesById !== this.props.edgesById ||
-      prevProps.usersById !== this.props.usersById
-    ) || !this.graphVisualisation)
+  componentDidMount () {
+    this.graphVisualisation = this.renderGraph()
+  }
 
-    if (shouldUpdateGraph && this.graphVisualisation) {
+  componentDidUpdate (prevProps) {
+    if (prevProps === this.props) {
+      return
+    }
+
+    if (this.graphVisualisation) {
       this.graphVisualisation.destroy()
       this.graphVisualisation = null
     }
 
-    if (shouldUpdateGraph) {
-      this.graphVisualisation = this.renderGraph()
-    }
+    this.graphVisualisation = this.renderGraph()
   }
 
   render () {
-    const isLoaded = this.isLoaded()
+    return <div
+      className={graphContainer.toString()}
+      ref={graphContainer => this.graphContainer = graphContainer}/>
+  }
+}
 
+// Wrapper around the Network Viewer that debounces props changes and doesn't render until all
+// of the graph data is available.
+const NetworkStream = componentFromStream(
+  $props => {
+    const $needsUpdate = $props.pipe(
+      operators.filter(Utils.hasDefinedProperties([ 'graph', 'nodesById', 'edgesById', 'usersById' ])),
+      operators.filter(R.where({
+        settings: R.where({
+          maxEdgeWeight: isFinite,
+          edgeLength: isFinite,
+        })
+      })),
+      operators.map(R.evolve({
+        settings: R.evolve({
+          maxEdgeWeight: parseFloat,
+          edgeLength: parseFloat,
+        })
+      })),
+      operators.debounceTime(500)
+    )
+
+    return $needsUpdate.pipe(
+      operators.map(props => <Network {...props} />)
+    )
+  }
+)
+NetworkStream.displayName = 'NetworkStream'
+NetworkStream.propTypes = {
+  graph: MProps.Graph,
+  nodesById: PropTypes.objectOf(MProps.Node),
+  edgesById: PropTypes.objectOf(MProps.Edge),
+  usersById: PropTypes.objectOf(MProps.User),
+
+  settings: PropTypes.shape({
+    maxEdgeWeight: PropTypes.string.isRequired,
+    edgeLength: PropTypes.string.isRequired,
+  }).isRequired,
+}
+
+const Visualize = observer(class _Visualize extends React.Component {
+  static displayName = 'Visualize'
+
+  static propTypes = {
+    graph: MProps.Graph,
+    nodesById: PropTypes.objectOf(MProps.Node),
+    edgesById: PropTypes.objectOf(MProps.Edge),
+    usersById: PropTypes.objectOf(MProps.User),
+    error: MProps.error,
+
+    settings: PropTypes.shape({
+      maxEdgeWeight: PropTypes.string.isRequired,
+      edgeLength: PropTypes.string.isRequired,
+    }).isRequired,
+  }
+
+  componentDidMount () {
+    return loadInitialData(Router.query.graph)
+  }
+
+  render () {
     return (
       <React.Fragment>
         <Head>
@@ -194,15 +274,64 @@ const Visualize = observer(class _Visualize extends React.Component {
         <Div display="flex" flexDirection="row" justifyContent="center" alignItems="center"
              height="100vh" position="relative">
 
-          <div
-            className={graphContainer.toString()}
-            ref={graphContainer => this.graphContainer = graphContainer} />
+          <NetworkStream
+            graph={this.props.graph}
+            nodesById={this.props.nodesById}
+            edgesById={this.props.edgesById}
+            usersById={this.props.usersById}
+            settings={this.props.settings} />
 
-          <Div height="100vh" width="300px" flexGrow="1" background="blue">
-            <Button variant="raised" color="primary" onClick={() => {
-            }}>
-              Serialize
-            </Button>
+          <Div
+            height="100vh"
+            width="300px"
+            flexGrow="1"
+            background="blue"
+            padding="0 15px">
+            <Div color="white" marginTop="15px">
+              <Typography classes={{ root: whiteText.toString() }}>
+                Maximum edge weight
+              </Typography>
+            </Div>
+
+            <Div display="flex">
+              <Div background="white" marginRight="15px">
+                <Input
+                  width="4em"
+                  value={this.props.settings.maxEdgeWeight}
+                  onChange={evt => updateSettings({ maxEdgeWeight: evt.target.value })} />
+              </Div>
+
+              <Slider
+                className={style['rc-slider']}
+                value={safeMax(this.props.settings.maxEdgeWeight, 0.01)}
+                min={0.01}
+                max={1}
+                step={0.01}
+                onChange={value => updateSettings({ maxEdgeWeight: value })}/>
+            </Div>
+
+            <Div color="white" marginTop="15px">
+              <Typography classes={{ root: whiteText.toString() }}>
+                Edge length
+              </Typography>
+            </Div>
+
+            <Div display="flex">
+              <Div background="white" marginRight="15px">
+                <Input
+                  width="4em"
+                  value={this.props.settings.edgeLength}
+                  onChange={evt => updateSettings({ edgeLength: evt.target.value })} />
+              </Div>
+
+              <Slider
+                className={style['rc-slider']}
+                value={safeMax(this.props.settings.edgeLength, 1000)}
+                min={1000}
+                max={40000}
+                step={1000}
+                onChange={value => updateSettings({ edgeLength: value })}/>
+            </Div>
           </Div>
         </Div>
       </React.Fragment>
@@ -210,9 +339,18 @@ const Visualize = observer(class _Visualize extends React.Component {
   }
 })
 
+// TODO: clamp
+const safeMax = (maybeInvalid, valid) => isFinite(maybeInvalid)
+  ? Math.max(maybeInvalid, valid)
+  : valid
+
 const graphContainer = css(important({
   height: '100vh',
   width: 'calc(100vw - 300px)'
+}))
+
+const whiteText = css(important({
+  color: '#ffffff',
 }))
 
 const WVisualize = inject(stores => ({ ...stores.state }))(Visualize)
