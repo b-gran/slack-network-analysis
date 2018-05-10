@@ -9,9 +9,9 @@ export const important = style => {
   return `${style} !important`
 }
 
-export const hasProps = R.pipe(
-  R.map(R.unary(R.has)),
+// Returns true if the input object has a defined value for each property in the input array.
+export const hasDefinedProperties = R.pipe(
+  R.map(R.unary(R.prop)),
   R.allPass,
   R.ifElse(R.isNil, R.F)
 )
-
