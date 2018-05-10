@@ -42,6 +42,7 @@ export default class MyDocument extends Document {
     return (
       <html>
       <Head>
+        <link rel="stylesheet" href="/_next/static/style.css" />
         <style id="glamor-server-side" dangerouslySetInnerHTML={{ __html: this.props.css }}/>
         <style id="jss-server-side" dangerouslySetInnerHTML={{ __html: this.props.jss }} />
       </Head>
