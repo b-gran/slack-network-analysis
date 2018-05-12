@@ -245,16 +245,12 @@ NetworkStream.propTypes = {
   }).isRequired,
 }
 
+const INetworkStream = inject(stores => ({ ...stores.state }))(NetworkStream)
+
 const Visualize = observer(class _Visualize extends React.Component {
   static displayName = 'Visualize'
 
   static propTypes = {
-    graph: MProps.Graph,
-    nodesById: PropTypes.objectOf(MProps.Node),
-    edgesById: PropTypes.objectOf(MProps.Edge),
-    usersById: PropTypes.objectOf(MProps.User),
-    error: MProps.error,
-
     settings: PropTypes.shape({
       maxEdgeWeight: PropTypes.string.isRequired,
       edgeLength: PropTypes.string.isRequired,
@@ -274,12 +270,7 @@ const Visualize = observer(class _Visualize extends React.Component {
         <Div display="flex" flexDirection="row" justifyContent="center" alignItems="center"
              height="100vh" position="relative">
 
-          <NetworkStream
-            graph={this.props.graph}
-            nodesById={this.props.nodesById}
-            edgesById={this.props.edgesById}
-            usersById={this.props.usersById}
-            settings={this.props.settings} />
+          <INetworkStream />
 
           <Div
             height="100vh"
@@ -353,7 +344,7 @@ const whiteText = css(important({
   color: '#ffffff',
 }))
 
-const WVisualize = inject(stores => ({ ...stores.state }))(Visualize)
+const WVisualize = inject(stores => ({ settings: stores.state.settings }))(Visualize)
 
 export default () => (
   <Provider state={state}>
