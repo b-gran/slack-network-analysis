@@ -55,6 +55,11 @@ describe('K', () => {
       const object = getObjectWithInheritedProperties({ foo: 1, bar: 1, baz: 1}, { x: 1, y: 1 })
       expect(Utils.K(object).length).toBe(3)
     })
+
+    it('skips non-enumerable string keys', () => {
+      const object = getObjectWithSymbolAndNonEnumerableProperties({ foo: 1, bar: 1 })
+      expect(Utils.K(object).length).toBe(2)
+    })
   })
 
   describe('some()', () => {
@@ -110,6 +115,13 @@ describe('K', () => {
       expect(spy).not.toHaveBeenCalledWith('3')
       expect(spy).not.toHaveBeenCalledWith('4')
     })
+
+    it('skips non-enumerable string keys', () => {
+      const object = getObjectWithSymbolAndNonEnumerableProperties({ foo: 1, bar: 1 })
+      const spy = jest.fn(R.F)
+      expect(Utils.K(object).some(spy)).toBe(false)
+      expect(spy).toHaveBeenCalledTimes(2)
+    })
   })
 })
 
@@ -151,4 +163,19 @@ function getObjectWithInheritedProperties (ownProps, inheritedProps) {
   }
   Klass.prototype = prototype
   return new Klass()
+}
+
+function getObjectWithSymbolAndNonEnumerableProperties (ownProps) {
+  const object = { ...ownProps }
+  Object.defineProperty(
+    object,
+    Symbol.for('symbol property'),
+    { value: 'something'}
+  )
+  Object.defineProperty(
+    object,
+    'string property, but not enumerable',
+    { value: 'something', enumerable: false }
+  )
+  return object
 }

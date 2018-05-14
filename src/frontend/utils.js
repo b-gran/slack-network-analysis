@@ -31,7 +31,7 @@ export function K (object) {
     get length () {
       let length = 0
       for (const key in object) {
-        if (!object.hasOwnProperty(key)) {
+        if (!isEnumberableNamedStringKey(key)) {
           continue
         }
         length += 1
@@ -40,7 +40,7 @@ export function K (object) {
     },
     some: iteratee => {
       for (const key in object) {
-        if (!object.hasOwnProperty(key)) {
+        if (!isEnumberableNamedStringKey(key)) {
           continue
         }
 
@@ -53,7 +53,7 @@ export function K (object) {
     map: iteratee => {
       const result = []
       for (const key in object) {
-        if (!object.hasOwnProperty(key)) {
+        if (!isEnumberableNamedStringKey(key)) {
           continue
         }
 
@@ -63,7 +63,7 @@ export function K (object) {
     },
     every: iteratee => {
       for (const key in object) {
-        if (!object.hasOwnProperty(key)) {
+        if (!isEnumberableNamedStringKey(key)) {
           continue
         }
 
@@ -76,7 +76,7 @@ export function K (object) {
     filter: iteratee => {
       const filteredElements = []
       for (const key in object) {
-        if (!object.hasOwnProperty(key)) {
+        if (!isEnumberableNamedStringKey(key)) {
           continue
         }
 
@@ -88,7 +88,7 @@ export function K (object) {
     },
     forEach: iteratee => {
       for (const key in object) {
-        if (!object.hasOwnProperty(key)) {
+        if (!isEnumberableNamedStringKey(key)) {
           continue
         }
         iteratee(object[key])
