@@ -61,6 +61,16 @@ export function K (object) {
       }
       return result
     },
+    toSet: () => {
+      const set = new Set()
+      for (const key in object) {
+        if (!isEnumberableNamedStringKey(key)) {
+          continue
+        }
+        set.add(key)
+      }
+      return set
+    },
     every: iteratee => {
       for (const key in object) {
         if (!isEnumberableNamedStringKey(key)) {

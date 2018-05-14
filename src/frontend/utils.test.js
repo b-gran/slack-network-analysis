@@ -56,7 +56,7 @@ describe('K', () => {
       expect(Utils.K(object).length).toBe(3)
     })
 
-    it('skips non-enumerable string keys', () => {
+    it('skips non-enumerable and non-string keys', () => {
       const object = getObjectWithSymbolAndNonEnumerableProperties({ foo: 1, bar: 1 })
       expect(Utils.K(object).length).toBe(2)
     })
@@ -116,11 +116,74 @@ describe('K', () => {
       expect(spy).not.toHaveBeenCalledWith('4')
     })
 
-    it('skips non-enumerable string keys', () => {
+    it('skips non-enumerable and non-string keys', () => {
       const object = getObjectWithSymbolAndNonEnumerableProperties({ foo: 1, bar: 1 })
       const spy = jest.fn(R.F)
       expect(Utils.K(object).some(spy)).toBe(false)
       expect(spy).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('map', () => {
+    it('returns an empty array for the empty object', () => {
+      expect(Utils.K({}).map(R.T)).toEqual([])
+    })
+
+    it('passes the key to the iteratee', () => {
+      const object = { foo: 1, bar: 1 }
+      const spy = jest.fn()
+      Utils.K(object).map(spy)
+
+      expect(spy).toHaveBeenCalledTimes(2)
+      expect(spy).toHaveBeenCalledWith('foo')
+      expect(spy).toHaveBeenCalledWith('bar')
+    })
+
+    it('returns an array consisting of the results of the iteratee', () => {
+      const object = { foo: 1, bar: 1 }
+      expect(Utils.K(object).map(R.identity)).toEqual([ 'foo', 'bar' ])
+    })
+
+    it('skips inherited keys', () => {
+      const object = getObjectWithInheritedProperties({ 1: 1, 2: 1 }, { 3: 1, 4: 1})
+      const spy = jest.fn()
+      Utils.K(object).map(spy)
+
+      expect(spy).toHaveBeenCalledWith('1')
+      expect(spy).toHaveBeenCalledWith('2')
+      expect(spy).not.toHaveBeenCalledWith('3')
+      expect(spy).not.toHaveBeenCalledWith('4')
+    })
+
+    it('skips non-enumerable and non-string keys', () => {
+      const object = getObjectWithSymbolAndNonEnumerableProperties({ foo: 1, bar: 1 })
+      const spy = jest.fn()
+      Utils.K(object).map(spy)
+
+      expect(spy).toHaveBeenCalledTimes(2)
+      expect(spy).toHaveBeenCalledWith('foo')
+      expect(spy).toHaveBeenCalledWith('bar')
+    })
+  })
+
+  describe('toSet', () => {
+    it('returns an empty Set for the empty object', () => {
+      expect(Utils.K({}).toSet()).toEqual(new Set())
+    })
+
+    it('returns a Set consisting of the keys of the object', () => {
+      const object = { foo: 1, bar: 1 }
+      expect(Utils.K(object).toSet()).toEqual(new Set([ 'foo', 'bar' ]))
+    })
+
+    it('skips inherited keys', () => {
+      const object = getObjectWithInheritedProperties({ 1: 1, 2: 1 }, { 3: 1, 4: 1})
+      expect(Utils.K(object).toSet()).toEqual(new Set([ '1', '2' ]))
+    })
+
+    it('skips non-enumerable and non-string keys', () => {
+      const object = getObjectWithSymbolAndNonEnumerableProperties({ foo: 1, bar: 1 })
+      expect(Utils.K(object).toSet()).toEqual(new Set([ 'foo', 'bar' ]))
     })
   })
 })
