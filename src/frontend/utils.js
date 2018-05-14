@@ -15,3 +15,84 @@ export const hasDefinedProperties = R.pipe(
   R.allPass,
   R.ifElse(R.isNil, R.F)
 )
+
+export const booleanFromString = R.ifElse(
+  R.pipe(String, R.toLower, R.equals('true')),
+  R.T,
+  R.F
+)
+
+export function K (object) {
+  function isEnumberableNamedStringKey (key) {
+    return typeof key === 'string' && object.hasOwnProperty(key)
+  }
+
+  return {
+    get length () {
+      let length = 0
+      for (const key in object) {
+        if (!object.hasOwnProperty(key)) {
+          continue
+        }
+        length += 1
+      }
+      return length
+    },
+    some: iteratee => {
+      for (const key in object) {
+        if (!object.hasOwnProperty(key)) {
+          continue
+        }
+
+        if (iteratee(key)) {
+          return true
+        }
+      }
+      return false
+    },
+    map: iteratee => {
+      const result = []
+      for (const key in object) {
+        if (!object.hasOwnProperty(key)) {
+          continue
+        }
+
+        result.push(iteratee(key))
+      }
+      return result
+    },
+    every: iteratee => {
+      for (const key in object) {
+        if (!object.hasOwnProperty(key)) {
+          continue
+        }
+
+        if (!iteratee(key)) {
+          return false
+        }
+      }
+      return true
+    },
+    filter: iteratee => {
+      const filteredElements = []
+      for (const key in object) {
+        if (!object.hasOwnProperty(key)) {
+          continue
+        }
+
+        if (iteratee(key)) {
+          filteredElements.push(key)
+        }
+      }
+      return filteredElements
+    },
+    forEach: iteratee => {
+      for (const key in object) {
+        if (!object.hasOwnProperty(key)) {
+          continue
+        }
+        iteratee(object[key])
+      }
+    },
+  }
+}
