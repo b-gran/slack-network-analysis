@@ -1,15 +1,15 @@
-import * as Utils from './utils'
 import * as R from 'ramda'
 import assert from 'assert'
+import { booleanFromString, hasDefinedProperties, K } from './utils'
 
 describe('hasDefinedProperties', () => {
   it('returns false if the object is missing any props', () => {
-    expect(Utils.hasDefinedProperties([ 'foo' ])({})).toBe(false)
+    expect(hasDefinedProperties([ 'foo' ])({})).toBe(false)
   })
 
   it('returns false if the object is nil', () => {
-    expect(Utils.hasDefinedProperties([ 'foo' ])(null)).toBe(false)
-    expect(Utils.hasDefinedProperties([])(null)).toBe(false)
+    expect(hasDefinedProperties([ 'foo' ])(null)).toBe(false)
+    expect(hasDefinedProperties([])(null)).toBe(false)
   })
 
   it('returns false if the object has falsey properties', () => {
@@ -17,7 +17,7 @@ describe('hasDefinedProperties', () => {
       foo: 'something',
       bar: false
     }
-    expect(Utils.hasDefinedProperties([ 'foo', 'bar' ])(object)).toBe(false)
+    expect(hasDefinedProperties([ 'foo', 'bar' ])(object)).toBe(false)
   })
 
   it('returns true if the object has all the properties', () => {
@@ -25,20 +25,20 @@ describe('hasDefinedProperties', () => {
       foo: 'something',
       bar: () => {},
     }
-    expect(Utils.hasDefinedProperties([ 'foo', 'bar' ])(object)).toBe(true)
+    expect(hasDefinedProperties([ 'foo', 'bar' ])(object)).toBe(true)
 
-    expect(Utils.hasDefinedProperties([])({})).toBe(true)
+    expect(hasDefinedProperties([])({})).toBe(true)
   })
 
   it('supports non-objects', () => {
-    expect(Utils.hasDefinedProperties([])(true)).toBe(true)
+    expect(hasDefinedProperties([])(true)).toBe(true)
   })
 })
 
 describe('K', () => {
   describe('length', () => {
     it('returns 0 for the empty object', () => {
-      expect(Utils.K({}).length).toBe(0)
+      expect(K({}).length).toBe(0)
     })
 
     it('returns the number of own keys', () => {
@@ -48,23 +48,23 @@ describe('K', () => {
         3: false,
         4: 0,
       }
-      expect(Utils.K(object).length).toBe(4)
+      expect(K(object).length).toBe(4)
     })
 
     it('skips inherited keys', () => {
       const object = getObjectWithInheritedProperties({ foo: 1, bar: 1, baz: 1}, { x: 1, y: 1 })
-      expect(Utils.K(object).length).toBe(3)
+      expect(K(object).length).toBe(3)
     })
 
     it('skips non-enumerable and non-string keys', () => {
       const object = getObjectWithSymbolAndNonEnumerableProperties({ foo: 1, bar: 1 })
-      expect(Utils.K(object).length).toBe(2)
+      expect(K(object).length).toBe(2)
     })
   })
 
   describe('some()', () => {
     it('returns false for the empty object regardless of predicate', () => {
-      expect(Utils.K({}).some(R.T)).toBe(false)
+      expect(K({}).some(R.T)).toBe(false)
     })
 
     it('passes only the key to the predicate', () => {
@@ -73,7 +73,7 @@ describe('K', () => {
       }
 
       const spy = jest.fn(R.T)
-      Utils.K(object).some(spy)
+      K(object).some(spy)
 
       expect(spy).toHaveBeenCalledTimes(1)
       expect(spy).toHaveBeenCalledWith('foo')
@@ -88,7 +88,7 @@ describe('K', () => {
       }
 
       const spy = jest.fn(key => key === '4')
-      expect(Utils.K(object).some(spy)).toBe(true)
+      expect(K(object).some(spy)).toBe(true)
 
       // Key ordering is not guaranteed, so it's possible the predicate
       // could just be called once (with 4)
@@ -102,13 +102,13 @@ describe('K', () => {
         3: false,
         4: 0,
       }
-      expect(Utils.K(object).some(R.F)).toBe(false)
+      expect(K(object).some(R.F)).toBe(false)
     })
 
     it('skips inherited keys', () => {
       const object = getObjectWithInheritedProperties({ 1: 1, 2: 1 }, { 3: 1, 4: 1})
       const spy = jest.fn(R.F)
-      expect(Utils.K(object).some(spy)).toBe(false)
+      expect(K(object).some(spy)).toBe(false)
 
       expect(spy).toHaveBeenCalledWith('1')
       expect(spy).toHaveBeenCalledWith('2')
@@ -119,20 +119,20 @@ describe('K', () => {
     it('skips non-enumerable and non-string keys', () => {
       const object = getObjectWithSymbolAndNonEnumerableProperties({ foo: 1, bar: 1 })
       const spy = jest.fn(R.F)
-      expect(Utils.K(object).some(spy)).toBe(false)
+      expect(K(object).some(spy)).toBe(false)
       expect(spy).toHaveBeenCalledTimes(2)
     })
   })
 
   describe('map', () => {
     it('returns an empty array for the empty object', () => {
-      expect(Utils.K({}).map(R.T)).toEqual([])
+      expect(K({}).map(R.T)).toEqual([])
     })
 
     it('passes the key to the iteratee', () => {
       const object = { foo: 1, bar: 1 }
       const spy = jest.fn()
-      Utils.K(object).map(spy)
+      K(object).map(spy)
 
       expect(spy).toHaveBeenCalledTimes(2)
       expect(spy).toHaveBeenCalledWith('foo')
@@ -141,13 +141,13 @@ describe('K', () => {
 
     it('returns an array consisting of the results of the iteratee', () => {
       const object = { foo: 1, bar: 1 }
-      expect(Utils.K(object).map(R.identity)).toEqual([ 'foo', 'bar' ])
+      expect(K(object).map(R.identity)).toEqual([ 'foo', 'bar' ])
     })
 
     it('skips inherited keys', () => {
       const object = getObjectWithInheritedProperties({ 1: 1, 2: 1 }, { 3: 1, 4: 1})
       const spy = jest.fn()
-      Utils.K(object).map(spy)
+      K(object).map(spy)
 
       expect(spy).toHaveBeenCalledWith('1')
       expect(spy).toHaveBeenCalledWith('2')
@@ -158,7 +158,7 @@ describe('K', () => {
     it('skips non-enumerable and non-string keys', () => {
       const object = getObjectWithSymbolAndNonEnumerableProperties({ foo: 1, bar: 1 })
       const spy = jest.fn()
-      Utils.K(object).map(spy)
+      K(object).map(spy)
 
       expect(spy).toHaveBeenCalledTimes(2)
       expect(spy).toHaveBeenCalledWith('foo')
@@ -168,22 +168,22 @@ describe('K', () => {
 
   describe('toSet', () => {
     it('returns an empty Set for the empty object', () => {
-      expect(Utils.K({}).toSet()).toEqual(new Set())
+      expect(K({}).toSet()).toEqual(new Set())
     })
 
     it('returns a Set consisting of the keys of the object', () => {
       const object = { foo: 1, bar: 1 }
-      expect(Utils.K(object).toSet()).toEqual(new Set([ 'foo', 'bar' ]))
+      expect(K(object).toSet()).toEqual(new Set([ 'foo', 'bar' ]))
     })
 
     it('skips inherited keys', () => {
       const object = getObjectWithInheritedProperties({ 1: 1, 2: 1 }, { 3: 1, 4: 1})
-      expect(Utils.K(object).toSet()).toEqual(new Set([ '1', '2' ]))
+      expect(K(object).toSet()).toEqual(new Set([ '1', '2' ]))
     })
 
     it('skips non-enumerable and non-string keys', () => {
       const object = getObjectWithSymbolAndNonEnumerableProperties({ foo: 1, bar: 1 })
-      expect(Utils.K(object).toSet()).toEqual(new Set([ 'foo', 'bar' ]))
+      expect(K(object).toSet()).toEqual(new Set([ 'foo', 'bar' ]))
     })
   })
 })
@@ -192,7 +192,7 @@ describe('booleanFromString', () => {
   [true, false].forEach(boolean => {
     it(`${boolean}: supports all cases`, () =>
       allCapitalizations(String(boolean))
-        .forEach(permutation => expect(Utils.booleanFromString(permutation)).toBe(boolean))
+        .forEach(permutation => expect(booleanFromString(permutation)).toBe(boolean))
     )
   })
 })
