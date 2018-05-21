@@ -8,28 +8,30 @@ import Router from 'next/router'
 import axios from 'axios'
 
 import Typography from 'material-ui/Typography'
+import Switch from 'material-ui/Switch'
 import Slider from 'rc-slider'
 import style from 'rc-slider/dist/rc-slider.css'
 
 import { Div, Input } from 'glamorous'
 import { css } from 'glamor'
 
-import { observable, action } from 'mobx'
-import { PropTypes as MobxPropTypes, observer, inject, Provider } from 'mobx-react'
+import { action, observable } from 'mobx'
+import { inject, observer, Provider } from 'mobx-react'
 
 import cytoscape from 'cytoscape'
 import cola from 'cytoscape-cola'
 
 import { mergeInitialState, SERVER_URL } from '../config'
 import * as MProps from '../props'
-import { important } from '../utils'
+import { important} from '../utils'
 
 import * as R from 'ramda'
 import * as Rx from 'rxjs'
 import * as operators from 'rxjs/operators'
-import * as Utils from '../utils'
 
 import * as Recompose from 'recompose'
+import { hasDefinedProperties } from '../../utils'
+import K from 'fast-keys'
 
 const componentFromStream = Recompose.componentFromStreamWithConfig({
   fromESObservable: Rx.from,
@@ -42,6 +44,12 @@ cytoscape.use(cola)
 // Resets
 css.global('body', { margin: 0 })
 
+const SettingsProp = PropTypes.shape({
+  maxEdgeWeight: PropTypes.number.isRequired,
+  edgeLength: PropTypes.number.isRequired,
+  animation: PropTypes.bool,
+})
+
 const initialState = observable({
   error: undefined,
   graph: undefined,
@@ -52,6 +60,7 @@ const initialState = observable({
   settings: {
     maxEdgeWeight: String(0.03),
     edgeLength: String(20000),
+    animation: true,
   },
 })
 
@@ -86,14 +95,14 @@ class Network extends React.Component {
     edgesById: PropTypes.objectOf(MProps.Edge).isRequired,
     usersById: PropTypes.objectOf(MProps.User).isRequired,
 
-    settings: PropTypes.shape({
-      maxEdgeWeight: PropTypes.number.isRequired,
-      edgeLength: PropTypes.number.isRequired,
-    }).isRequired,
+    settings: SettingsProp.isRequired,
   }
+
+  static settingsRenderWhitelist = new Set([ 'animation' ])
 
   graphContainer = null
   graphVisualisation = null
+  layout = null
 
   renderGraph () {
     const edgeLengthVal = this.props.settings.edgeLength
@@ -110,7 +119,7 @@ class Network extends React.Component {
       infinite: true,
     };
 
-    const nodes = Object.keys(this.props.nodesById).map(nodeId => {
+    const nodes = K(this.props.nodesById).map(nodeId => {
       const node = this.props.nodesById[nodeId]
       return ({
         group: 'nodes',
@@ -121,7 +130,7 @@ class Network extends React.Component {
       })
     })
 
-    const edges = Object.keys(this.props.edgesById).map(edgeId => {
+    const edges = K(this.props.edgesById).map(edgeId => {
       const edge = this.props.edgesById[edgeId]
       return ({
         group: 'edges',
@@ -177,13 +186,30 @@ class Network extends React.Component {
 
     // Start the visualization and physics sim
     const layout = cyGraph.layout(layoutParams)
-    layout.run()
 
-    return cyGraph
+    if (this.props.settings.animation) {
+      layout.run()
+    }
+
+    return [cyGraph, layout]
   }
 
   componentDidMount () {
-    this.graphVisualisation = this.renderGraph()
+    const [ graphVisualisation, layout ] = this.renderGraph()
+    this.graphVisualisation = graphVisualisation
+    this.layout = layout
+  }
+
+  doesGraphNeedUpdate (prevProps) {
+    return (
+      this.props.edgesById !== prevProps.edgesById ||
+      this.props.nodesById !== prevProps.nodesById ||
+      this.props.usersById !== prevProps.usersById ||
+      this.props.graph !== prevProps.graph ||
+      K(this.props.settings)
+        .filter(key => !Network.settingsRenderWhitelist.has(key))
+        .some(key => prevProps.settings[key] !== this.props.settings[key])
+    )
   }
 
   componentDidUpdate (prevProps) {
@@ -191,12 +217,30 @@ class Network extends React.Component {
       return
     }
 
-    if (this.graphVisualisation) {
-      this.graphVisualisation.destroy()
-      this.graphVisualisation = null
+    // If we've only toggled the animation, we don't need to recreate the graph.
+    const needsUpdate = this.doesGraphNeedUpdate(prevProps)
+    const animationToggled = this.props.settings.animation !== prevProps.settings.animation
+    if (!needsUpdate && animationToggled && this.graphVisualisation && this.layout) {
+      return this.props.settings.animation
+        ? this.layout.start()
+        : this.layout.stop()
     }
 
-    this.graphVisualisation = this.renderGraph()
+    // If we didn't change any data or toggle the animation, we don't need to do anything.
+    if (!needsUpdate) {
+      return
+    }
+
+    if (this.graphVisualisation) {
+      this.layout && this.layout.stop()
+      this.graphVisualisation.destroy()
+      this.graphVisualisation = null
+      this.layout = null
+    }
+
+    const [ graphVisualisation, layout ] = this.renderGraph()
+    this.graphVisualisation = graphVisualisation
+    this.layout = layout
   }
 
   render () {
@@ -211,7 +255,7 @@ class Network extends React.Component {
 const NetworkStream = componentFromStream(
   $props => {
     const $needsUpdate = $props.pipe(
-      operators.filter(Utils.hasDefinedProperties([ 'graph', 'nodesById', 'edgesById', 'usersById' ])),
+      operators.filter(hasDefinedProperties([ 'graph', 'nodesById', 'edgesById', 'usersById' ])),
       operators.filter(R.where({
         settings: R.where({
           maxEdgeWeight: isFinite,
@@ -239,9 +283,11 @@ NetworkStream.propTypes = {
   edgesById: PropTypes.objectOf(MProps.Edge),
   usersById: PropTypes.objectOf(MProps.User),
 
+  // These props come as raw inputs, so they are strings instead of numbers.
   settings: PropTypes.shape({
     maxEdgeWeight: PropTypes.string.isRequired,
     edgeLength: PropTypes.string.isRequired,
+    animation: PropTypes.bool,
   }).isRequired,
 }
 
@@ -251,10 +297,12 @@ const Visualize = observer(class _Visualize extends React.Component {
   static displayName = 'Visualize'
 
   static propTypes = {
+    // The the raw settings inputs (could be invalid).
     settings: PropTypes.shape({
       maxEdgeWeight: PropTypes.string.isRequired,
       edgeLength: PropTypes.string.isRequired,
-    }).isRequired,
+      animation: PropTypes.bool,
+    })
   }
 
   componentDidMount () {
@@ -322,6 +370,17 @@ const Visualize = observer(class _Visualize extends React.Component {
                 max={40000}
                 step={1000}
                 onChange={value => updateSettings({ edgeLength: value })}/>
+            </Div>
+
+            <Div display="flex">
+              <Div color="white" marginTop="15px">
+                <Typography classes={{ root: whiteText.toString() }}>
+                  Animation
+                </Typography>
+              </Div>
+
+              <Switch checked={this.props.settings.animation}
+                      onChange={evt => updateSettings({ animation: evt.target.checked })} />
             </Div>
           </Div>
         </Div>
