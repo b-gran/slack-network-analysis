@@ -1,13 +1,14 @@
 import getConfig from 'next/config'
 import * as R from 'ramda'
 import { observable } from 'mobx'
+import K from 'fast-keys'
 
 export const SERVER_URL = getConfig().publicRuntimeConfig.SERVER_URL
 
 export const mergeInitialState = (initialState, prevState) => {
   const sameKeys = R.equals(
-    new Set(Object.keys(initialState)),
-    new Set(Object.keys(prevState)),
+    K(initialState).toSet(),
+    K(prevState).toSet(),
   )
 
   if (sameKeys) {

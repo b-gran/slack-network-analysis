@@ -3,6 +3,7 @@ const assert = require('assert')
 const axios = require('axios')
 
 const models = require('./models')
+const K = require('fast-keys').default
 
 const SlackApi = token => ({
   GetConversationHistory (conversationId, {
@@ -534,7 +535,7 @@ const getEdgesForUsers = module.exports.getEdgesForUsers = async (users, { getTh
       ),
       setUnion(
         new Set(threadRelation.keys()),
-        new Set(Object.keys(user.mentions || {}))
+        K(user.mentions || {}).toSet()
       )
     )
 
