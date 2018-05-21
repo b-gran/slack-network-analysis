@@ -250,6 +250,10 @@ class Network extends React.Component {
   }
 }
 
+const NetworkEmpty = () => (
+  <div className={graphContainer.toString()} />
+)
+
 // Wrapper around the Network Viewer that debounces props changes and doesn't render until all
 // of the graph data is available.
 const NetworkStream = componentFromStream(
@@ -271,8 +275,11 @@ const NetworkStream = componentFromStream(
       operators.debounceTime(500)
     )
 
-    return $needsUpdate.pipe(
-      operators.map(props => <Network {...props} />)
+    return Rx.concat(
+      Rx.of(<NetworkEmpty/>),
+      $needsUpdate.pipe(
+        operators.map(props => <Network {...props} />)
+      )
     )
   }
 )
