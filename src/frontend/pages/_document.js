@@ -7,6 +7,9 @@ import { createMuiTheme, createGenerateClassName, MuiThemeProvider } from 'mater
 
 import { GLAMOR_ID_FIELD } from '../rehydrate'
 
+// Arbitrary: some path dictated by Next, needed to load imported stylesheets.
+const NEXT_CSS_FILE_PATH = '/_next/static/style.css'
+
 export default class MyDocument extends Document {
   static async getInitialProps ({ renderPage }) {
     const registry = new SheetsRegistry()
@@ -42,7 +45,7 @@ export default class MyDocument extends Document {
     return (
       <html>
       <Head>
-        <link rel="stylesheet" href="/_next/static/style.css" />
+        <link rel="stylesheet" href={NEXT_CSS_FILE_PATH} />
         <style id="glamor-server-side" dangerouslySetInnerHTML={{ __html: this.props.css }}/>
         <style id="jss-server-side" dangerouslySetInnerHTML={{ __html: this.props.jss }} />
       </Head>
