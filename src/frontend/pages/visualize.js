@@ -12,7 +12,7 @@ import Switch from 'material-ui/Switch'
 import Slider from 'rc-slider'
 import style from 'rc-slider/dist/rc-slider.css'
 
-import { Div, Input } from 'glamorous'
+import glamorous, { Div, Input } from 'glamorous'
 import { css } from 'glamor'
 
 import { action, observable } from 'mobx'
@@ -339,9 +339,9 @@ const Visualize = observer(class _Visualize extends React.Component {
               </Typography>
             </Div>
 
-            <Div display="flex">
-              <Div background="white" marginRight="15px">
-                <Input
+            <Div display="flex" alignItems="center">
+              <Div marginRight="15px">
+                <SidebarTextInput
                   width="4em"
                   value={this.props.settings.maxEdgeWeight}
                   onChange={evt => updateSettings({ maxEdgeWeight: evt.target.value })} />
@@ -362,12 +362,12 @@ const Visualize = observer(class _Visualize extends React.Component {
               </Typography>
             </Div>
 
-            <Div display="flex">
-              <Div background="white" marginRight="15px">
-                <Input
+            <Div display="flex" alignItems="center">
+              <Div marginRight="15px">
+                <SidebarTextInput
                   width="4em"
                   value={this.props.settings.edgeLength}
-                  onChange={evt => updateSettings({ edgeLength: evt.target.value })} />
+                  onChange={evt => updateSettings({ edgeLength: evt.target.value })}/>
               </Div>
 
               <Slider
@@ -395,6 +395,19 @@ const Visualize = observer(class _Visualize extends React.Component {
     )
   }
 })
+
+const SidebarTextInput = glamorous.input({
+  outline: 'none',
+  borderRadius: '4px',
+  border: '1px solid #777',
+  padding: '10px',
+  ':hover': {
+    border: '1px solid #333',
+  },
+  ':focus': {
+    border: '1px solid #333',
+  },
+}, ({ width }) => ({ width }))
 
 // TODO: clamp
 const safeMax = (maybeInvalid, valid) => isFinite(maybeInvalid)
