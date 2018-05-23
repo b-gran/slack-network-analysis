@@ -300,17 +300,8 @@ NetworkStream.propTypes = {
 
 const INetworkStream = inject(stores => ({ ...stores.state }))(NetworkStream)
 
-const Visualize = observer(class _Visualize extends React.Component {
+class Visualize extends React.Component {
   static displayName = 'Visualize'
-
-  static propTypes = {
-    // The the raw settings inputs (could be invalid).
-    settings: PropTypes.shape({
-      maxEdgeWeight: PropTypes.string.isRequired,
-      edgeLength: PropTypes.string.isRequired,
-      animation: PropTypes.bool,
-    })
-  }
 
   componentDidMount () {
     return loadInitialData(Router.query.graph)
@@ -332,7 +323,7 @@ const Visualize = observer(class _Visualize extends React.Component {
       </React.Fragment>
     )
   }
-})
+}
 
 const Sidebar = R.pipe(
   observer,
@@ -504,11 +495,9 @@ const whiteText = css(important({
   color: '#ffffff',
 }))
 
-const WVisualize = inject(stores => ({ settings: stores.state.settings }))(Visualize)
-
 export default () => (
   <Provider state={state}>
-    <WVisualize />
+    <Visualize />
   </Provider>
 )
 
