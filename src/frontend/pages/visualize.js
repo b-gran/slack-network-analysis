@@ -327,74 +327,155 @@ const Visualize = observer(class _Visualize extends React.Component {
 
           <INetworkStream />
 
-          <Div
-            height="100vh"
-            width="300px"
-            flexGrow="1"
-            background="blue"
-            padding="0 15px">
-            <Div color="white" marginTop="15px">
-              <Typography classes={{ root: whiteText.toString() }}>
-                Maximum edge weight
-              </Typography>
-            </Div>
-
-            <Div display="flex" alignItems="center">
-              <Div marginRight="15px">
-                <SidebarTextInput
-                  width="4em"
-                  value={this.props.settings.maxEdgeWeight}
-                  onChange={evt => updateSettings({ maxEdgeWeight: evt.target.value })} />
-              </Div>
-
-              <Slider
-                className={style['rc-slider']}
-                value={safeMax(this.props.settings.maxEdgeWeight, 0.01)}
-                min={0.01}
-                max={1}
-                step={0.01}
-                onChange={value => updateSettings({ maxEdgeWeight: value })}/>
-            </Div>
-
-            <Div color="white" marginTop="15px">
-              <Typography classes={{ root: whiteText.toString() }}>
-                Edge length
-              </Typography>
-            </Div>
-
-            <Div display="flex" alignItems="center">
-              <Div marginRight="15px">
-                <SidebarTextInput
-                  width="4em"
-                  value={this.props.settings.edgeLength}
-                  onChange={evt => updateSettings({ edgeLength: evt.target.value })}/>
-              </Div>
-
-              <Slider
-                className={style['rc-slider']}
-                value={safeMax(this.props.settings.edgeLength, 1000)}
-                min={1000}
-                max={40000}
-                step={1000}
-                onChange={value => updateSettings({ edgeLength: value })}/>
-            </Div>
-
-            <Div display="flex">
-              <Div color="white" marginTop="15px">
-                <Typography classes={{ root: whiteText.toString() }}>
-                  Animation
-                </Typography>
-              </Div>
-
-              <Switch checked={this.props.settings.animation}
-                      onChange={evt => updateSettings({ animation: evt.target.checked })} />
-            </Div>
-          </Div>
+          <Sidebar onSelectUser={() => console.log('select user')} />
         </Div>
       </React.Fragment>
     )
   }
 })
+
+const Sidebar = R.pipe(
+  observer,
+  inject(stores => ({
+    usersById: stores.state.usersById,
+    settings: stores.state.settings,
+  })),
+)(componentFromStream(
+  $props => {
+    const userSearchHandler = Recompose.createEventHandler()
+
+    return Rx.combineLatest(
+      Rx.concat(
+        Rx.of(''),
+        userSearchHandler.stream,
+      ),
+      $props
+    ).pipe(
+      operators.map(([userSearchTerm, props]) => {
+        const usersById = props.usersById || {}
+        const matchingUsers = K(usersById).filter(userId => {
+          const user = usersById[userId]
+          return user.name.indexOf(userSearchTerm) !== -1
+        }).map(userId => usersById[userId])
+
+        const sidebarProps = {
+          userSearchTerm,
+          matchingUsers,
+          onChangeUserSearchTerm: userSearchHandler.handler,
+
+          ...props,
+        }
+
+        return <PSidebar {...sidebarProps} />
+      })
+    )
+  }
+))
+Sidebar.displayName = 'Sidebar'
+Sidebar.propTypes = {
+  onSelectUser: PropTypes.func.isRequired,
+}
+
+class PSidebar extends React.Component {
+  static displayName = 'PSidebar'
+
+  static propTypes = {
+    // (selectedUserId: UserId) => void
+    onSelectUser: PropTypes.func.isRequired,
+
+    userSearchTerm: PropTypes.string,
+    matchingUsers: PropTypes.arrayOf(MProps.User),
+
+    // (searchTerm: string) => void
+    onChangeUserSearchTerm: PropTypes.func.isRequired,
+
+    // These props come as raw inputs, so they are strings instead of numbers.
+    settings: PropTypes.shape({
+      maxEdgeWeight: PropTypes.string.isRequired,
+      edgeLength: PropTypes.string.isRequired,
+      animation: PropTypes.bool,
+    }).isRequired,
+  }
+
+  render () {
+    return (
+      <Div
+        height="100vh"
+        width="300px"
+        flexGrow="1"
+        background="blue"
+        padding="0 15px">
+        <Div color="white" marginTop="15px">
+          <Typography classes={{ root: whiteText.toString() }}>
+            Maximum edge weight
+          </Typography>
+        </Div>
+
+        <Div display="flex" alignItems="center">
+          <Div marginRight="15px">
+            <SidebarTextInput
+              width="4em"
+              value={this.props.settings.maxEdgeWeight}
+              onChange={evt => updateSettings({ maxEdgeWeight: evt.target.value })}/>
+          </Div>
+
+          <Slider
+            className={style['rc-slider']}
+            value={safeMax(this.props.settings.maxEdgeWeight, 0.01)}
+            min={0.01}
+            max={1}
+            step={0.01}
+            onChange={value => updateSettings({ maxEdgeWeight: String(value) })}/>
+        </Div>
+
+        <Div color="white" marginTop="15px">
+          <Typography classes={{ root: whiteText.toString() }}>
+            Edge length
+          </Typography>
+        </Div>
+
+        <Div display="flex" alignItems="center">
+          <Div marginRight="15px">
+            <SidebarTextInput
+              width="4em"
+              value={this.props.settings.edgeLength}
+              onChange={evt => updateSettings({ edgeLength: evt.target.value })}/>
+          </Div>
+
+          <Slider
+            className={style['rc-slider']}
+            value={safeMax(this.props.settings.edgeLength, 1000)}
+            min={1000}
+            max={40000}
+            step={1000}
+            onChange={value => updateSettings({ edgeLength: String(value) })}/>
+        </Div>
+
+        <Div display="flex">
+          <Div color="white" marginTop="15px">
+            <Typography classes={{ root: whiteText.toString() }}>
+              Animation
+            </Typography>
+          </Div>
+
+          <Switch checked={this.props.settings.animation}
+                  onChange={evt => updateSettings({ animation: evt.target.checked })}/>
+        </Div>
+
+        <Div color="white" marginTop="15px">
+          <Typography classes={{ root: whiteText.toString() }}>
+            Users
+          </Typography>
+        </Div>
+
+        <SidebarTextInput
+          width="4em"
+          value={this.props.userSearchTerm}
+          onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}/>
+      </Div>
+    )
+  }
+}
 
 const SidebarTextInput = glamorous.input({
   outline: 'none',
