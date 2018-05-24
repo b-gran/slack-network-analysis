@@ -126,7 +126,7 @@ const Sidebar = R.pipe(
         const usersById = props.usersById || {}
         const matchingUsers = K(usersById).filter(userId => {
           const user = usersById[userId]
-          return user.name.indexOf(userSearchTerm) !== -1
+          return user.name.toLowerCase().indexOf(userSearchTerm) !== -1
         }).map(userId => usersById[userId])
 
         const sidebarProps = {
@@ -239,13 +239,127 @@ class PSidebar extends React.Component {
           </Typography>
         </Div>
 
-        <SidebarTextInput
-          width="4em"
-          value={this.props.userSearchTerm}
-          onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}/>
+        <UserSearchBar
+          onSelectUser={this.props.onSelectUser}
+          onChangeUserSearchTerm={this.props.onChangeUserSearchTerm}
+          matchingUsers={this.props.matchingUsers}
+          userSearchTerm={this.props.userSearchTerm} />
       </Div>
     )
   }
+}
+
+const UserSelect = props => (
+  <Div
+    onMouseEnter={props.onMouseEnter}
+    onMouseLeave={props.onMouseLeave}
+    padding="10px" background="#FFF" borderRadius="4px">
+    {props.children}
+  </Div>
+)
+UserSelect.displayName = 'UserSelect'
+UserSelect.propTypes = {
+  children: PropTypes.node.isRequired,
+  onMouseEnter: PropTypes.func.isRequired,
+  onMouseLeave: PropTypes.func.isRequired,
+}
+
+class PUserSearchBar extends React.Component {
+  render () {
+    return <div>
+      <SidebarTextInput
+        value={this.props.userSearchTerm}
+        onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}
+        onFocus={this.props.onFocusInput}
+        onBlur={this.props.onBlurInput}/>
+
+      {this.props.showUserSelect && (
+        <UserSelect
+          onMouseEnter={this.props.onEnterUserSelect}
+          onMouseLeave={this.props.onLeaveUserSelect}>
+          {
+            R.isEmpty(this.props.matchingUsers) ?
+              <div>No matching users</div> :
+              this.props.matchingUsers.map(user => (
+                <Div
+                  key={user.user_id}
+                  padding="3px 6px"
+                  css={{
+                    ':hover': {
+                      background: '#CCC'
+                    }
+                  }}>
+                  {user.name}
+                </Div>
+              ))
+          }
+        </UserSelect>
+      )}
+    </div>
+  }
+}
+
+PUserSearchBar.displayName = 'PUserSearchBar'
+PUserSearchBar.propTypes = {
+  // (selectedUserId: UserId) => void
+  onSelectUser: PropTypes.func.isRequired,
+
+  userSearchTerm: PropTypes.string,
+  matchingUsers: PropTypes.arrayOf(MProps.User),
+  onChangeUserSearchTerm: PropTypes.func.isRequired,
+
+  onFocusInput: PropTypes.func.isRequired,
+  onBlurInput: PropTypes.func.isRequired,
+
+  onEnterUserSelect: PropTypes.func.isRequired,
+  onLeaveUserSelect: PropTypes.func.isRequired,
+
+  showUserSelect: PropTypes.bool,
+}
+
+function mergeBooleanStreams (trueStream, falseStream, initialValue = false) {
+  return Rx.concat(
+    Rx.of(initialValue),
+    Rx.merge(
+      Rx.from(trueStream).pipe(operators.mapTo(true)),
+      Rx.from(falseStream).pipe(operators.mapTo(false)),
+    )
+  )
+}
+
+const UserSearchBar = componentFromStream(
+  $props => {
+    const focusHandler = Recompose.createEventHandler()
+    const blurHandler = Recompose.createEventHandler()
+
+    const userSelectEnterHandler = Recompose.createEventHandler()
+    const userSelectLeaveHandler = Recompose.createEventHandler()
+
+    return Rx.combineLatest(
+      mergeBooleanStreams(focusHandler.stream, blurHandler.stream),
+      mergeBooleanStreams(userSelectEnterHandler.stream, userSelectLeaveHandler.stream),
+      $props
+    ).pipe(operators.map(([ isInputFocused, isSelectHovered, props ]) => {
+      return (
+        <PUserSearchBar
+          {...props}
+          showUserSelect={isInputFocused || isSelectHovered}
+          onFocusInput={focusHandler.handler}
+          onBlurInput={blurHandler.handler}
+          onEnterUserSelect={userSelectEnterHandler.handler}
+          onLeaveUserSelect={userSelectLeaveHandler.handler} />
+      )
+    }))
+  }
+)
+UserSearchBar.displayName = 'UserSearchBar'
+UserSearchBar.propTypes = {
+  // (selectedUserId: UserId) => void
+  onSelectUser: PropTypes.func.isRequired,
+
+  userSearchTerm: PropTypes.string,
+  matchingUsers: PropTypes.arrayOf(MProps.User),
+  onChangeUserSearchTerm: PropTypes.func.isRequired,
 }
 
 const SidebarTextInput = glamorous.input({
