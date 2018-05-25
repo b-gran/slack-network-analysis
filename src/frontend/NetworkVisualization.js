@@ -41,6 +41,8 @@ class Network extends React.Component {
     usersById: PropTypes.objectOf(MProps.User).isRequired,
 
     settings: SettingsProp.isRequired,
+
+    $selectUser: PropTypes.object.isRequired,
   }
 
   static settingsRenderWhitelist = new Set([ 'animation' ])
@@ -48,6 +50,7 @@ class Network extends React.Component {
   graphContainer = null
   graphVisualisation = null
   layout = null
+  subscription = null
 
   renderGraph () {
     const edgeLengthVal = this.props.settings.edgeLength
@@ -71,7 +74,9 @@ class Network extends React.Component {
         data: {
           id: node._id,
           name: this.props.usersById[node.user].name,
+          userId: this.props.usersById[node.user]._id,
         },
+        id: node._id,
       })
     })
 
@@ -85,6 +90,7 @@ class Network extends React.Component {
           target: edge.vertices[1],
           weight: edge.weight,
         },
+        id: edge._id,
       })
     }).filter(edge => edge.data.weight < this.props.settings.maxEdgeWeight)
 
@@ -135,6 +141,16 @@ class Network extends React.Component {
     if (this.props.settings.animation) {
       layout.run()
     }
+
+    if (this.subscription) {
+      this.subscription.unsubscribe()
+      this.subscription = null
+    }
+    this.subscription = this.props.$selectUser
+      .subscribe(selectedUser => {
+        const user = cyGraph.nodes(`[userId='${selectedUser._id}']`)
+        cyGraph.center(user)
+      })
 
     return [cyGraph, layout]
   }
@@ -241,6 +257,9 @@ NetworkStream.propTypes = {
     edgeLength: PropTypes.string.isRequired,
     animation: PropTypes.bool,
   }).isRequired,
+
+  // Stream that receives an event (the selected user) whenever a user is selected
+  $selectUser: PropTypes.object.isRequired,
 }
 
 const graphContainer = css(important({
@@ -248,5 +267,11 @@ const graphContainer = css(important({
   width: 'calc(100vw - 300px)'
 }))
 
-export default inject(stores => ({ ...stores.state }))(NetworkStream)
+const ConnectedNetworkStream = inject(stores => ({ ...stores.state }))(NetworkStream)
+ConnectedNetworkStream.propTypes = {
+  // Stream that receives an event (the selected user) whenever a user is selected
+  $selectUser: PropTypes.object.isRequired,
+}
+
+export default ConnectedNetworkStream
 

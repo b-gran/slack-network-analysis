@@ -84,6 +84,16 @@ const updateSettings = action(partialSettingsUpdate =>
 class Visualize extends React.Component {
   static displayName = 'Visualize'
 
+  constructor (props) {
+    super(props)
+
+    const { handler, stream } = Recompose.createEventHandler()
+    this.state = {
+      selectUserHandler: handler,
+      selectUserStream: Rx.from(stream),
+    }
+  }
+
   componentDidMount () {
     return loadInitialData(Router.query.graph)
   }
@@ -96,9 +106,9 @@ class Visualize extends React.Component {
         </Head>
         <Div display="flex" flexDirection="row" justifyContent="center" alignItems="center"
              height="100vh" position="relative">
-          <NetworkVisualization />
+          <NetworkVisualization $selectUser={this.state.selectUserStream} />
 
-          <Sidebar onSelectUser={() => console.log('select user')} />
+          <Sidebar onSelectUser={this.state.selectUserHandler} />
         </Div>
       </React.Fragment>
     )
@@ -284,11 +294,13 @@ class PUserSearchBar extends React.Component {
                 <Div
                   key={user.user_id}
                   padding="3px 6px"
+                  cursor="pointer"
                   css={{
                     ':hover': {
                       background: '#CCC'
                     }
-                  }}>
+                  }}
+                  onClick={() => this.props.onSelectUser(user)} >
                   {user.name}
                 </Div>
               ))
@@ -317,6 +329,8 @@ PUserSearchBar.propTypes = {
   showUserSelect: PropTypes.bool,
 }
 
+// Given a "true" stream and a "false" stream, returns a new stream whose latest
+// value is a boolean with the result of the most recent input stream.
 function mergeBooleanStreams (trueStream, falseStream, initialValue = false) {
   return Rx.concat(
     Rx.of(initialValue),
