@@ -24,3 +24,8 @@ module.exports.sample = function sample (array) {
 
   return array[(Math.random() * array.length)|0]
 }
+
+module.exports.isIterable = maybeIterable => (
+  !R.isNil(maybeIterable) &&
+  typeof maybeIterable[Symbol.iterator] === 'function'
+)
