@@ -12,3 +12,15 @@ module.exports.booleanFromString = R.ifElse(
   R.T,
   R.F
 )
+
+// Given an object, returns a Map with the same keys & values.
+// Note: keys will be strings.
+module.exports.mapFromObject = R.pipe(R.toPairs, R.constructN(1, Map))
+
+module.exports.sample = function sample (array) {
+  if (R.isNil(array) || !Array.isArray(array) || R.isEmpty(array)) {
+    return undefined
+  }
+
+  return array[(Math.random() * array.length)|0]
+}

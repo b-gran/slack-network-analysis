@@ -1,6 +1,8 @@
 const Api = require('./api')
 const R = require('ramda')
 
+const { mapFromObject, sample } = require('./utils')
+
 const DAY_MS = (60 * 60 * 24) * 1000
 
 const teamId = 'objectid'
@@ -396,10 +398,6 @@ describe('keyByMap', () => {
   })
 })
 
-// Given an object, returns a Map with the same keys & values.
-// Note: keys will be strings.
-const mapFromObject = R.pipe(R.toPairs, R.constructN(1, Map))
-
 const randomSlackTimestamp = R.pipe(randomDateWithinLastDay, toSlackTimestamp)
 
 // JS Dates are in ms since unix epoch.
@@ -414,10 +412,3 @@ function randomDateWithinLastDay () {
   return new Date(randomDateTimestamp)
 }
 
-function sample (array) {
-  if (R.isNil(array) || !Array.isArray(array) || R.isEmpty(array)) {
-    return undefined
-  }
-
-  return array[(Math.random() * array.length)|0]
-}
