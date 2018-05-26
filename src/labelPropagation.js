@@ -44,6 +44,25 @@ export function pickLabel (labelsByNodeId, sourceNode, neighbors) {
   return sampleSet(maxEntries)[0]
 }
 
+// Given a graph and a labeling, assigns each node the label of the majority of its neighbors.
+// Does not modify the input labeling. Returns a new labeling.
+//
+// Preconditions
+//    graph is a Cytoscape graph
+//    there is a label in _labelsByNodeId (Map) for each node in graph
+export function propagateLabels (_labelsByNodeId, graph) {
+  const labelsByNodeId = new Map(_labelsByNodeId)
+  const nodes = graph.nodes()
+
+  nodes.forEach(node => {
+    const neighbors = node.openNeighborhood().nodes()
+    const label = pickLabel(labelsByNodeId, node, neighbors)
+    labelsByNodeId.set(node.id(), label)
+  })
+
+  return labelsByNodeId
+}
+
 export function* getShuffledNodeIterator (nodeCollection) {
   const shuffledIndices = shuffleArrayInPlace(R.range(0, nodeCollection.size()))
   for (const index of shuffledIndices) {

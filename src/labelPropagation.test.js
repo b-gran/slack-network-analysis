@@ -4,6 +4,139 @@ import cytoscape from 'cytoscape'
 import { mapFromObject, isIterable } from './utils'
 import * as LPA from './labelPropagation'
 
+describe('propagateLabels', () => {
+  // A graph containing a single node is assigned its initial label
+  it('returns the same labels', () => {
+    const nodeId = 'A'
+    const graph = cytoscape({
+      elements: [{
+        group: 'nodes',
+        data: {
+          id: nodeId,
+        },
+      }]
+    })
+    const labels = mapFromObject({
+      [nodeId]: nodeId,
+    })
+
+    const propagatedLabels = LPA.propagateLabels(labels, graph)
+    expect(propagatedLabels).toEqual(labels)
+  })
+
+  // Each node is assigned the label of the majority of its neighbors.
+  it('assigns the same label to every node', () => {
+    const graph = cytoscape({
+      elements: [{
+        group: 'nodes',
+        data: {
+          id: 'A',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'B',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'C',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'D',
+        },
+      }, {
+        group: 'edges',
+        data: {
+          source: 'A',
+          target: 'B',
+        },
+      }, {
+        group: 'edges',
+        data: {
+          source: 'A',
+          target: 'C',
+        },
+      }, {
+        group: 'edges',
+        data: {
+          source: 'A',
+          target: 'D',
+        },
+      }, {
+        group: 'edges',
+        data: {
+          source: 'B',
+          target: 'C',
+        },
+      }, {
+        group: 'edges',
+        data: {
+          source: 'B',
+          target: 'D',
+        },
+      }, {
+        group: 'edges',
+        data: {
+          source: 'C',
+          target: 'D',
+        },
+      }]
+    })
+    const labels = mapFromObject({
+      A: 'A',
+      B: 'A',
+      C: 'A',
+      D: 'D',
+    })
+
+    const propagatedLabels = LPA.propagateLabels(labels, graph)
+    expect(propagatedLabels).toEqual(mapFromObject({
+      A: 'A',
+      B: 'A',
+      C: 'A',
+      D: 'A',
+    }))
+  })
+
+  it('assigns each node its own label when there are no edges between them', () => {
+    const graph = cytoscape({
+      elements: [{
+        group: 'nodes',
+        data: {
+          id: 'A',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'B',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'C',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'D',
+        },
+      }]
+    })
+    const labels = mapFromObject({
+      A: 'A',
+      B: 'B',
+      C: 'C',
+      D: 'D',
+    })
+
+    const propagatedLabels = LPA.propagateLabels(labels, graph)
+    expect(propagatedLabels).toEqual(labels)
+  })
+})
+
 describe('pickLabel', () => {
   // A graph containing a single node is assigned its initial label
   it('assigns the node the label', () => {
