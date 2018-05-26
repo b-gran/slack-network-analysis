@@ -150,7 +150,12 @@ describe('getShuffledNodeIterator', () => {
     const collection = cytoscape({ elements: nodes }).nodes()
     const iter = LPA.getShuffledNodeIterator(collection)
 
-    const idsInIterator = new Set(Array.from(iter).map(node => node.id()))
+    const nodeArray = Array.from(iter)
+    for (const node of nodeArray) {
+      expect(node.isNode()).toBe(true)
+    }
+
+    const idsInIterator = new Set(nodeArray.map(node => node.id()))
     expect(idsInIterator).toEqual(new Set(nodeIds))
   })
 
