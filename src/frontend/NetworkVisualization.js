@@ -142,23 +142,20 @@ class Network extends React.Component {
       layout.run()
     }
 
-    if (this.subscription) {
-      this.subscription.unsubscribe()
-      this.subscription = null
-    }
-    this.subscription = this.props.$selectUser
+    const subscription = this.props.$selectUser
       .subscribe(selectedUser => {
         const user = cyGraph.nodes(`[userId='${selectedUser._id}']`)
         cyGraph.center(user)
       })
 
-    return [cyGraph, layout]
+    return [cyGraph, layout, subscription]
   }
 
   componentDidMount () {
-    const [ graphVisualisation, layout ] = this.renderGraph()
+    const [ graphVisualisation, layout, subscription ] = this.renderGraph()
     this.graphVisualisation = graphVisualisation
     this.layout = layout
+    this.subscription = subscription
   }
 
   doesGraphNeedUpdate (prevProps) {
@@ -193,15 +190,19 @@ class Network extends React.Component {
     }
 
     if (this.graphVisualisation) {
+      this.subscription && this.subscription.unsubscribe()
       this.layout && this.layout.stop()
       this.graphVisualisation.destroy()
+
       this.graphVisualisation = null
+      this.subscription = null
       this.layout = null
     }
 
-    const [ graphVisualisation, layout ] = this.renderGraph()
+    const [ graphVisualisation, layout, subscription ] = this.renderGraph()
     this.graphVisualisation = graphVisualisation
     this.layout = layout
+    this.subscription = subscription
   }
 
   render () {
