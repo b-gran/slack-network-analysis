@@ -44,6 +44,31 @@ export function pickLabel (labelsByNodeId, sourceNode, neighbors) {
   return sampleSet(maxEntries)[0]
 }
 
+export function* getShuffledNodeIterator (nodeCollection) {
+  const shuffledIndices = shuffleArrayInPlace(R.range(0, nodeCollection.size()))
+  for (const index of shuffledIndices) {
+    yield nodeCollection[index]
+  }
+}
+
+function shuffleArrayInPlace (array) {
+  for (let i = 0; i < array.length; i++) {
+    const shuffledIndex = randomInt(i, array.length)
+
+    const initialValue = array[i]
+    array[i] = array[shuffledIndex]
+    array[shuffledIndex] = initialValue
+  }
+  return array
+}
+
+// Returns an integer selected uniformly at random in the range [min, max)
+function randomInt (min, max) {
+  const minInt = min|0
+  const maxInt = max|0
+  return ((Math.random() * (maxInt - minInt))|0) + minInt
+}
+
 function headSet (set) {
   return set.values().next().value
 }
