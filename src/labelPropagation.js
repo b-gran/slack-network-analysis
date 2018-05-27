@@ -50,16 +50,43 @@ export function pickLabel (labelsByNodeId, sourceNode, neighbors) {
 // Preconditions
 //    graph is a Cytoscape graph
 //    there is a label in _labelsByNodeId (Map) for each node in graph
-export function propagateLabels (_labelsByNodeId, graph) {
+export function propagateLabelsStep (_labelsByNodeId, graph) {
   const labelsByNodeId = new Map(_labelsByNodeId)
   const nodes = graph.nodes()
 
-  nodes.forEach(node => {
+  // Pick nodes at random and assign a label
+  for (const node of getShuffledNodeIterator(nodes)) {
     const neighbors = node.openNeighborhood().nodes()
     const label = pickLabel(labelsByNodeId, node, neighbors)
     labelsByNodeId.set(node.id(), label)
-  })
+  }
 
+  return labelsByNodeId
+}
+
+export function propagateLabels (graph, { iterations = 10 } = {}) {
+  let labelsByNodeId = getInitialLabeling(graph)
+  const initialLabelCount = labelsByNodeId.size
+
+  for (let i = 0; i < iterations; i++) {
+    labelsByNodeId = propagateLabelsStep(labelsByNodeId, graph)
+
+    // If we didn't propagate any labels, we're done
+    const labelCount = new Set(labelsByNodeId.values()).size
+    if (labelCount === initialLabelCount) {
+      return labelsByNodeId
+    }
+  }
+
+  return labelsByNodeId
+}
+
+export function getInitialLabeling (graph) {
+  const labelsByNodeId = new Map()
+  graph.nodes().forEach(node => {
+    const id = node.id()
+    labelsByNodeId.set(id, id)
+  })
   return labelsByNodeId
 }
 

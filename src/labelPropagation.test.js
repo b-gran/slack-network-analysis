@@ -16,11 +16,145 @@ describe('propagateLabels', () => {
         },
       }]
     })
+    const expectedLabels = mapFromObject({
+      [nodeId]: nodeId,
+    })
+
+    const propagatedLabels = LPA.propagateLabels(graph)
+    expect(propagatedLabels).toEqual(expectedLabels)
+  })
+
+  // Each node is assigned the label of the majority of its neighbors.
+  it('assigns the same label to every node and picks each label uniformly', () => {
+    const graph = cytoscape({
+      elements: [{
+        group: 'nodes',
+        data: {
+          id: 'A',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'B',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'C',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'D',
+        },
+      }, {
+        group: 'edges',
+        data: {
+          source: 'A',
+          target: 'B',
+        },
+      }, {
+        group: 'edges',
+        data: {
+          source: 'A',
+          target: 'C',
+        },
+      }, {
+        group: 'edges',
+        data: {
+          source: 'B',
+          target: 'D',
+        },
+      }, {
+        group: 'edges',
+        data: {
+          source: 'C',
+          target: 'D',
+        },
+      }]
+    })
+
+    const countByLabel = mapFromObject({
+      A: 0,
+      B: 0,
+      C: 0,
+      D: 0,
+    })
+
+    const iterations = 400
+    for (let i = 0; i < iterations; i++) {
+      const labelsByNodeId = LPA.propagateLabels(graph)
+
+      const labels = Array.from(labelsByNodeId.values())
+      const label = labels[0]
+
+      // Has a small probability of failure
+      expect(labels.every(R.equals(label))).toBe(true)
+
+      countByLabel.set(label, countByLabel.get(label) + 1)
+    }
+
+    for (const [,count] of countByLabel) {
+      const ratio = count / iterations
+
+      // Has a small probability of failure
+      expect(ratio).toBeCloseTo(1 / countByLabel.size, 0.05)
+    }
+  })
+
+  it('assigns each node its own label when there are no edges between them', () => {
+    const graph = cytoscape({
+      elements: [{
+        group: 'nodes',
+        data: {
+          id: 'A',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'B',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'C',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'D',
+        },
+      }]
+    })
+    const labels = mapFromObject({
+      A: 'A',
+      B: 'B',
+      C: 'C',
+      D: 'D',
+    })
+
+    const propagatedLabels = LPA.propagateLabelsStep(labels, graph)
+    expect(propagatedLabels).toEqual(labels)
+  })
+})
+
+describe('propagateLabelsStep', () => {
+  // A graph containing a single node is assigned its initial label
+  it('returns the same labels', () => {
+    const nodeId = 'A'
+    const graph = cytoscape({
+      elements: [{
+        group: 'nodes',
+        data: {
+          id: nodeId,
+        },
+      }]
+    })
     const labels = mapFromObject({
       [nodeId]: nodeId,
     })
 
-    const propagatedLabels = LPA.propagateLabels(labels, graph)
+    const propagatedLabels = LPA.propagateLabelsStep(labels, graph)
     expect(propagatedLabels).toEqual(labels)
   })
 
@@ -92,7 +226,7 @@ describe('propagateLabels', () => {
       D: 'D',
     })
 
-    const propagatedLabels = LPA.propagateLabels(labels, graph)
+    const propagatedLabels = LPA.propagateLabelsStep(labels, graph)
     expect(propagatedLabels).toEqual(mapFromObject({
       A: 'A',
       B: 'A',
@@ -132,7 +266,7 @@ describe('propagateLabels', () => {
       D: 'D',
     })
 
-    const propagatedLabels = LPA.propagateLabels(labels, graph)
+    const propagatedLabels = LPA.propagateLabelsStep(labels, graph)
     expect(propagatedLabels).toEqual(labels)
   })
 })
@@ -330,5 +464,40 @@ describe('getShuffledNodeIterator', () => {
     function serializeOrdering (ordering) {
       return ordering.join(',')
     }
+  })
+})
+
+describe('getInitialLabeling', () => {
+  it('returns a unique label for each node', () => {
+    const graph = cytoscape({
+      elements: [{
+        group: 'nodes',
+        data: {
+          id: 'A',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'B',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'C',
+        },
+      }, {
+        group: 'nodes',
+        data: {
+          id: 'D',
+        },
+      }]
+    })
+    const labels = LPA.getInitialLabeling(graph)
+    expect(labels).toEqual(mapFromObject({
+      A: 'A',
+      B: 'B',
+      C: 'C',
+      D: 'D',
+    }))
   })
 })
