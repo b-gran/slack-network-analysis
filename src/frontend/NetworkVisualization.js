@@ -31,6 +31,9 @@ const SettingsProp = PropTypes.shape({
   animation: PropTypes.bool,
 })
 
+const NodePrimaryColor = '#f50057'
+const NodeSecondaryColor = '#999999'
+
 class Network extends React.Component {
   static displayName = 'Network'
 
@@ -123,7 +126,13 @@ class Network extends React.Component {
             "width": "mapData(score, 0, 1, 20, 60)",
             "height": "mapData(score, 0, 1, 20, 60)",
             content: node => `${node.data('name')} (${node.data('score')})`
-          }
+          },
+        },
+        {
+          selector: 'node:selected',
+          style: {
+            'background-color': NodePrimaryColor,
+          },
         }
       ]
     })
@@ -142,10 +151,66 @@ class Network extends React.Component {
       layout.run()
     }
 
+    function animateElement (element, frames) {
+      return frames.reduce(
+        (state, frame) => {
+          return state.then(() => new Promise(resolve => {
+            element.animate({
+              ...frame,
+              complete: (...args) => {
+                frame.complete && frame.complete(...args)
+                return resolve()
+              }
+            })
+          }))
+        },
+        Promise.resolve()
+      )
+    }
+
     const subscription = this.props.$selectUser
       .subscribe(selectedUser => {
         const user = cyGraph.nodes(`[userId='${selectedUser._id}']`)
         cyGraph.center(user)
+
+        user.select()
+
+        // Flash the selected user and reset the styles when the animation finishes
+        animateElement(
+          user,
+          [
+            {
+              style: {
+                backgroundColor: NodePrimaryColor,
+              },
+              duration: 1000
+            },
+            {
+              style: {
+                backgroundColor: NodeSecondaryColor,
+              },
+              duration: 1000
+            },
+            {
+              style: {
+                backgroundColor: NodePrimaryColor,
+              },
+              duration: 1000
+            },
+            {
+              style: {
+                backgroundColor: NodeSecondaryColor,
+              },
+              duration: 1000
+            },
+            {
+              style: {
+                backgroundColor: NodePrimaryColor,
+              },
+              duration: 1000
+            },
+          ]
+        ).then(() => user.removeStyle())
       })
 
     return [cyGraph, layout, subscription]
