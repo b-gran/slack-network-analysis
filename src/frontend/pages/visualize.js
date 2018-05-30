@@ -9,6 +9,7 @@ import axios from 'axios'
 
 import Typography from 'material-ui/Typography'
 import Switch from 'material-ui/Switch'
+import Popover from 'react-popover'
 import Slider from 'rc-slider'
 import style from 'rc-slider/dist/rc-slider.css'
 
@@ -44,6 +45,11 @@ cytoscape.use(cola)
 
 // Resets
 css.global('body', { margin: 0 })
+
+// Style tooltips (have a static css class)
+css.global('.Popover-tipShape', {
+  fill: '#FFFFFF'
+})
 
 const initialState = observable({
   error: undefined,
@@ -263,7 +269,11 @@ const UserSelect = props => (
   <Div
     onMouseEnter={props.onMouseEnter}
     onMouseLeave={props.onMouseLeave}
-    padding="10px" background="#FFF" borderRadius="4px">
+    padding="10px" background="#FFF" borderRadius="4px"
+    width="15em"
+    maxHeight="200px"
+    overflow="scroll"
+    boxShadow="rgba(0, 0, 0, 0.1) 0px 4px 8px 4px, rgba(0, 0, 0, 0.5) 0px 1px 4px 0px">
     {props.children}
   </Div>
 )
@@ -274,40 +284,71 @@ UserSelect.propTypes = {
   onMouseLeave: PropTypes.func.isRequired,
 }
 
+// Needed to avoid rendering components for the initial client side render.
+class Mounted extends React.Component {
+  static displayName = 'Mounted'
+  static propTypes = {
+    children: PropTypes.node,
+  }
+
+  state = {
+    mounted: false
+  }
+
+  componentDidMount () {
+    this.setState({ mounted: true })
+  }
+
+  render () {
+    if (!this.state.mounted) {
+      return null
+    }
+
+    return this.props.children
+  }
+}
+
 class PUserSearchBar extends React.Component {
   render () {
-    return <div>
-      <SidebarTextInput
-        value={this.props.userSearchTerm}
-        onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}
-        onFocus={this.props.onFocusInput}
-        onBlur={this.props.onBlurInput}/>
+    const userSelectPopover =  (
+      <UserSelect
+        onMouseEnter={this.props.onEnterUserSelect}
+        onMouseLeave={this.props.onLeaveUserSelect}>
+        {
+          R.isEmpty(this.props.matchingUsers) ?
+            <div>No matching users</div> :
+            this.props.matchingUsers.map(user => (
+              <Div
+                key={user.user_id}
+                padding="3px 6px"
+                cursor="pointer"
+                css={{
+                  ':hover': {
+                    background: '#CCC'
+                  }
+                }}
+                onClick={() => this.props.onSelectUser(user)} >
+                {user.name}
+              </Div>
+            ))
+        }
+      </UserSelect>
+    )
 
-      {this.props.showUserSelect && (
-        <UserSelect
-          onMouseEnter={this.props.onEnterUserSelect}
-          onMouseLeave={this.props.onLeaveUserSelect}>
-          {
-            R.isEmpty(this.props.matchingUsers) ?
-              <div>No matching users</div> :
-              this.props.matchingUsers.map(user => (
-                <Div
-                  key={user.user_id}
-                  padding="3px 6px"
-                  cursor="pointer"
-                  css={{
-                    ':hover': {
-                      background: '#CCC'
-                    }
-                  }}
-                  onClick={() => this.props.onSelectUser(user)} >
-                  {user.name}
-                </Div>
-              ))
-          }
-        </UserSelect>
-      )}
-    </div>
+    return <Mounted>
+      <Popover
+        isOpen={this.props.showUserSelect}
+        onOuterAction={this.props.onLeaveUserSelect}
+        place="below"
+        body={userSelectPopover}>
+        <SidebarTextInput
+          width="12em"
+          value={this.props.userSearchTerm}
+          onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}
+          onFocus={this.props.onFocusInput}
+          onBlur={this.props.onBlurInput}/>
+      </Popover>
+    </Mounted>
   }
 }
 
