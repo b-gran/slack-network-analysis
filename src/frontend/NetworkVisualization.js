@@ -170,9 +170,12 @@ class Network extends React.Component {
 
     const subscription = this.props.$selectUser
       .subscribe(selectedUser => {
+        // Deselect anything that's currently selected
+        cyGraph.nodes().unselect()
+
+        // Center & select the user
         const user = cyGraph.nodes(`[userId='${selectedUser._id}']`)
         cyGraph.center(user)
-
         user.select()
 
         // Flash the selected user and reset the styles when the animation finishes
