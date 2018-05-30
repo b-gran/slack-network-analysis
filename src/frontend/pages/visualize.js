@@ -289,6 +289,7 @@ class Mounted extends React.Component {
   static displayName = 'Mounted'
   static propTypes = {
     children: PropTypes.node,
+    initial: PropTypes.node,
   }
 
   state = {
@@ -301,7 +302,7 @@ class Mounted extends React.Component {
 
   render () {
     if (!this.state.mounted) {
-      return null
+      return this.props.initial
     }
 
     return this.props.children
@@ -335,18 +336,20 @@ class PUserSearchBar extends React.Component {
       </UserSelect>
     )
 
-    return <Mounted>
+    const textInput = <SidebarTextInput
+      width="12em"
+      value={this.props.userSearchTerm}
+      onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}
+      onFocus={this.props.onFocusInput}
+      onBlur={this.props.onBlurInput}/>
+
+    return <Mounted initial={textInput}>
       <Popover
         isOpen={this.props.showUserSelect}
         onOuterAction={this.props.onLeaveUserSelect}
         place="below"
         body={userSelectPopover}>
-        <SidebarTextInput
-          width="12em"
-          value={this.props.userSearchTerm}
-          onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}
-          onFocus={this.props.onFocusInput}
-          onBlur={this.props.onBlurInput}/>
+        { textInput }
       </Popover>
     </Mounted>
   }
