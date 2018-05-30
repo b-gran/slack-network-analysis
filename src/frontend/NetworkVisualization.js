@@ -19,6 +19,7 @@ import { inject } from 'mobx-react'
 import * as Recompose from 'recompose'
 import { hasDefinedProperties } from '../utils'
 import K from 'fast-keys'
+import { propagateLabels } from '../labelPropagation'
 
 const componentFromStream = Recompose.componentFromStreamWithConfig({
   fromESObservable: Rx.from,
@@ -30,6 +31,33 @@ const SettingsProp = PropTypes.shape({
   edgeLength: PropTypes.number.isRequired,
   animation: PropTypes.bool,
 })
+
+function toHex (n) {
+  const string = n.toString(16)
+  return Array(6 - string.length).fill('0').join('') + string
+}
+
+function gradient (x) {
+  return (0xFFFFFF * x) | 0
+}
+
+function getGradientGenerator () {
+  const offset = Math.random()
+  return i => toHex(gradient(( (offset + (0.618033988749895 * i)) % 1)))
+}
+
+function getColorsForLabels (labelsByNodeId) {
+  const getColor = getGradientGenerator()
+
+  const colorsByLabel = new Map()
+  const labelValues = Array.from(labelsByNodeId.values())
+  for (let i = 0; i < labelValues.length; i++) {
+    const label = labelValues[i]
+    colorsByLabel.set(label, getColor(i))
+  }
+
+  return colorsByLabel
+}
 
 const NodePrimaryColor = '#f50057'
 const NodeSecondaryColor = '#999999'
@@ -119,22 +147,6 @@ class Network extends React.Component {
     const cyGraph = cytoscape({
       container: this.graphContainer,
       elements: [ ...nodes, ...edges ],
-      style: [
-        {
-          selector: 'node',
-          style: {
-            "width": "mapData(score, 0, 1, 20, 60)",
-            "height": "mapData(score, 0, 1, 20, 60)",
-            content: node => `${node.data('name')} (${node.data('score')})`
-          },
-        },
-        {
-          selector: 'node:selected',
-          style: {
-            'background-color': NodePrimaryColor,
-          },
-        }
-      ]
     })
 
     // Prune the graph
@@ -143,6 +155,45 @@ class Network extends React.Component {
       return edges.length === 0
     })
     nodesWithoutEdges.remove()
+
+    // NEIGHBORHOOD DETECTION
+
+    // Generate labels and colors
+    const labels = propagateLabels(cyGraph)
+    const colorsByLabel = getColorsForLabels(labels)
+
+    // Generate selectors for each label
+    const selectors = Array.from(colorsByLabel.entries()).map(([label, color]) => ({
+      selector: `node[label = "${label}"]`,
+      style: {
+        'background-color': `#${color}`,
+      },
+    }))
+
+    // Assign labels
+    cyGraph.nodes().forEach(node => {
+      const label = labels.get(node.id())
+      node.data('label', label)
+    })
+
+    // Apply generated style with label selectors
+    cyGraph.style([
+      {
+        selector: 'node',
+        style: {
+          "width": "mapData(score, 0, 1, 20, 60)",
+          "height": "mapData(score, 0, 1, 20, 60)",
+          content: node => `${node.data('name')} (${node.data('score')})`
+        },
+      },
+      ...selectors,
+      {
+        selector: 'node:selected',
+        style: {
+          'background-color': NodePrimaryColor,
+        },
+      },
+    ])
 
     // Start the visualization and physics sim
     const layout = cyGraph.layout(layoutParams)
@@ -179,12 +230,13 @@ class Network extends React.Component {
         user.select()
 
         // Flash the selected user and reset the styles when the animation finishes
+        const nodeBaseColor = `#${colorsByLabel.get(user.data('label'))}`
         animateElement(
           user,
           [
             {
               style: {
-                backgroundColor: NodeSecondaryColor,
+                backgroundColor: nodeBaseColor,
               },
               duration: 1000
             },
@@ -196,7 +248,7 @@ class Network extends React.Component {
             },
             {
               style: {
-                backgroundColor: NodeSecondaryColor,
+                backgroundColor: nodeBaseColor,
               },
               duration: 1000
             },
