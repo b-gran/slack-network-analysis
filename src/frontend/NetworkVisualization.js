@@ -184,12 +184,6 @@ class Network extends React.Component {
           [
             {
               style: {
-                backgroundColor: NodePrimaryColor,
-              },
-              duration: 1000
-            },
-            {
-              style: {
                 backgroundColor: NodeSecondaryColor,
               },
               duration: 1000
