@@ -145,18 +145,19 @@ module.exports.loadMessagesForTeam = async team_id => {
   const saveMessages = Promise.resolve()
 
   for (const channel of channels) {
-    if (
-      channel.name.match(/alerts/) ||
-      channel.name.match(/jira$/) ||
-      channel.name.match(/jiraall/) ||
-      channel.name.match(/design-tasks/) ||
-      channel.name.match(/notify$/) ||
-      channel.name.match(/notifications$/)
-    ) {
-      console.log(`Skipping channel ${channel.name}`)
-      channelsRemaining = channelsRemaining - 1
-      continue
-    }
+    // TODO: build a UI for skipping channels
+    // if (
+    //   channel.name.match(/alerts/) ||
+    //   channel.name.match(/jira$/) ||
+    //   channel.name.match(/jiraall/) ||
+    //   channel.name.match(/design-tasks/) ||
+    //   channel.name.match(/notify$/) ||
+    //   channel.name.match(/notifications$/)
+    // ) {
+    //   console.log(`Skipping channel ${channel.name}`)
+    //   channelsRemaining = channelsRemaining - 1
+    //   continue
+    // }
 
     try {
       const messages = await loadChannelMessagesForTeam(team_id, channel.channel_id, start)
