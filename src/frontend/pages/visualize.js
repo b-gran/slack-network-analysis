@@ -59,8 +59,8 @@ const initialState = observable({
   usersById: undefined,
 
   settings: {
-    maxEdgeWeight: String(0.03),
-    edgeLength: String(20000),
+    maxEdgeWeight: String(0.6),
+    edgeLength: String(2000),
     animation: true,
   },
 })
