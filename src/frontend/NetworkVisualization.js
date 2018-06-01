@@ -71,6 +71,25 @@ class Network extends React.Component {
     edgesById: PropTypes.objectOf(MProps.Edge).isRequired,
     usersById: PropTypes.objectOf(MProps.User).isRequired,
 
+    nodes: PropTypes.arrayOf(PropTypes.shape({
+      group: PropTypes.oneOf(['nodes']).isRequired,
+      data: PropTypes.shape({
+        id: PropTypes.string.isRequired,
+        name: PropTypes.string.isRequired,
+        userId: PropTypes.string.isRequired,
+      }).isRequired,
+    })).isRequired,
+
+    edges: PropTypes.arrayOf(PropTypes.shape({
+      group: PropTypes.oneOf(['edges']).isRequired,
+      data: PropTypes.shape({
+        id: PropTypes.string.isRequired,
+        source: PropTypes.string.isRequired,
+        target: PropTypes.string.isRequired,
+        weight: PropTypes.number.isRequired,
+      }).isRequired,
+    })).isRequired,
+
     settings: SettingsProp.isRequired,
 
     $selectUser: PropTypes.object.isRequired,
@@ -98,36 +117,8 @@ class Network extends React.Component {
       infinite: true,
     };
 
-    const nodes = K(this.props.nodesById).map(nodeId => {
-      const node = this.props.nodesById[nodeId]
-      return ({
-        group: 'nodes',
-        data: {
-          id: node._id,
-          name: this.props.usersById[node.user].name,
-          userId: this.props.usersById[node.user]._id,
-        },
-        id: node._id,
-      })
-    })
-
-    const edges = K(this.props.edgesById).map(edgeId => {
-      const edge = this.props.edgesById[edgeId]
-      return ({
-        group: 'edges',
-        data: {
-          id: edge._id,
-          source: edge.vertices[0],
-          target: edge.vertices[1],
-          weight: edge.weight,
-        },
-        id: edge._id,
-      })
-    }).filter(edge => edge.data.weight < this.props.settings.maxEdgeWeight)
-
-    const data = [ ...nodes, ...edges ]
-
     // Just for doing calculations on the data.
+    const data = [...this.props.nodes, ...this.props.edges]
     const dataOnly = cytoscape({
       elements: data,
     })
@@ -146,7 +137,7 @@ class Network extends React.Component {
 
     const cyGraph = cytoscape({
       container: this.graphContainer,
-      elements: [ ...nodes, ...edges ],
+      elements: [ ...this.props.nodes, ...this.props.edges ],
     })
 
     // Prune the graph
@@ -335,13 +326,16 @@ const NetworkEmpty = () => (
 const NetworkStream = componentFromStream(
   $props => {
     const $needsUpdate = $props.pipe(
-      operators.filter(hasDefinedProperties([ 'graph', 'nodesById', 'edgesById', 'usersById' ])),
+      operators.filter(hasDefinedProperties(['graph', 'nodesById', 'edgesById', 'usersById', 'nodes', 'edges'])),
+
+      // Only update the graph when we have valid settings
       operators.filter(R.where({
         settings: R.where({
           maxEdgeWeight: isFinite,
           edgeLength: isFinite,
         })
       })),
+
       operators.map(R.evolve({
         settings: R.evolve({
           maxEdgeWeight: parseFloat,
@@ -382,7 +376,11 @@ const graphContainer = css(important({
   width: 'calc(100vw - 300px)'
 }))
 
-const ConnectedNetworkStream = inject(stores => ({ ...stores.state }))(NetworkStream)
+const ConnectedNetworkStream = inject(stores => ({
+  ...stores.state,
+  nodes: stores.state.nodes,
+  edges: stores.state.edges,
+}))(NetworkStream)
 ConnectedNetworkStream.propTypes = {
   // Stream that receives an event (the selected user) whenever a user is selected
   $selectUser: PropTypes.object.isRequired,
