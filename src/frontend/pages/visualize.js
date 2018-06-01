@@ -63,6 +63,72 @@ const initialState = observable({
     edgeLength: String(2000),
     animation: true,
   },
+
+  get nodes () {
+    if (!this.nodesById || !this.usersById) {
+      return undefined
+    }
+
+    return K(this.nodesById).map(nodeId => {
+      const node = this.nodesById[nodeId]
+      return ({
+        group: 'nodes',
+        data: {
+          id: node._id,
+          name: this.usersById[node.user].name,
+          userId: this.usersById[node.user]._id,
+        },
+        id: node._id,
+      })
+    })
+  },
+
+  get edges () {
+    if (!this.edgesById) {
+      return undefined
+    }
+
+    const parsedMaxEdgeWeight = parseFloat(this.settings.maxEdgeWeight)
+    const filterEdge = isNaN(parsedMaxEdgeWeight) ?
+      // Don't filter edges if we don't have a real edge weight
+      R.T :
+
+      // Only allow edges less than the edge weight in settings
+      R.pipe(
+        R.path([ 'data', 'weight' ]),
+        R.gt(parsedMaxEdgeWeight)
+      )
+
+    return K(this.edgesById).map(edgeId => {
+      const edge = this.edgesById[edgeId]
+      return ({
+        group: 'edges',
+        data: {
+          id: edge._id,
+          source: edge.vertices[0],
+          target: edge.vertices[1],
+          weight: edge.weight,
+        },
+        id: edge._id,
+      })
+    }).filter(filterEdge)
+  },
+
+  get visibleUsers () {
+    if (!this.usersById || !this.nodes || !this.edges) {
+      return undefined
+    }
+
+    return cytoscape({
+      headless: true,
+      elements: [ ...this.nodes, ...this.edges ]
+    }).nodes().filter(node => {
+      const edges = node.connectedEdges()
+      return edges.length > 0
+    }).toArray().map(node => {
+      return this.usersById[node.data('userId')]
+    })
+  },
 })
 
 const state = (module.hot && module.hot.data && module.hot.data.state) ?
@@ -125,6 +191,7 @@ const Sidebar = R.pipe(
   observer,
   inject(stores => ({
     usersById: stores.state.usersById,
+    visibleUsers: stores.state.visibleUsers,
     settings: stores.state.settings,
   })),
 )(componentFromStream(
@@ -139,11 +206,10 @@ const Sidebar = R.pipe(
       $props
     ).pipe(
       operators.map(([userSearchTerm, props]) => {
-        const usersById = props.usersById || {}
-        const matchingUsers = K(usersById).filter(userId => {
-          const user = usersById[userId]
+        const visibleUsers = props.visibleUsers || []
+        const matchingUsers = visibleUsers.filter(user => {
           return user.name.toLowerCase().indexOf(userSearchTerm) !== -1
-        }).map(userId => usersById[userId])
+        })
 
         const sidebarProps = {
           userSearchTerm,
