@@ -62,33 +62,31 @@ function getColorsForLabels (labelsByNodeId) {
 const NodePrimaryColor = '#f50057'
 const NodeSecondaryColor = '#999999'
 
+const CygraphNode = PropTypes.shape({
+  group: PropTypes.oneOf(['nodes']).isRequired,
+  data: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    userId: PropTypes.string.isRequired,
+  }).isRequired,
+})
+
+const CygraphEdge = PropTypes.shape({
+  group: PropTypes.oneOf(['edges']).isRequired,
+  data: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    source: PropTypes.string.isRequired,
+    target: PropTypes.string.isRequired,
+    weight: PropTypes.number.isRequired,
+  }).isRequired,
+})
+
 class Network extends React.Component {
   static displayName = 'Network'
 
   static propTypes = {
-    graph: MProps.Graph.isRequired,
-    nodesById: PropTypes.objectOf(MProps.Node).isRequired,
-    edgesById: PropTypes.objectOf(MProps.Edge).isRequired,
-    usersById: PropTypes.objectOf(MProps.User).isRequired,
-
-    nodes: PropTypes.arrayOf(PropTypes.shape({
-      group: PropTypes.oneOf(['nodes']).isRequired,
-      data: PropTypes.shape({
-        id: PropTypes.string.isRequired,
-        name: PropTypes.string.isRequired,
-        userId: PropTypes.string.isRequired,
-      }).isRequired,
-    })).isRequired,
-
-    edges: PropTypes.arrayOf(PropTypes.shape({
-      group: PropTypes.oneOf(['edges']).isRequired,
-      data: PropTypes.shape({
-        id: PropTypes.string.isRequired,
-        source: PropTypes.string.isRequired,
-        target: PropTypes.string.isRequired,
-        weight: PropTypes.number.isRequired,
-      }).isRequired,
-    })).isRequired,
+    nodes: PropTypes.arrayOf(CygraphNode).isRequired,
+    edges: PropTypes.arrayOf(CygraphEdge).isRequired,
 
     settings: SettingsProp.isRequired,
 
@@ -265,10 +263,8 @@ class Network extends React.Component {
 
   doesGraphNeedUpdate (prevProps) {
     return (
-      this.props.edgesById !== prevProps.edgesById ||
-      this.props.nodesById !== prevProps.nodesById ||
-      this.props.usersById !== prevProps.usersById ||
-      this.props.graph !== prevProps.graph ||
+      this.props.nodes !== prevProps.nodes ||
+      this.props.edges !== prevProps.edges ||
       K(this.props.settings)
         .filter(key => !Network.settingsRenderWhitelist.has(key))
         .some(key => prevProps.settings[key] !== this.props.settings[key])
@@ -326,7 +322,8 @@ const NetworkEmpty = () => (
 const NetworkStream = componentFromStream(
   $props => {
     const $needsUpdate = $props.pipe(
-      operators.filter(hasDefinedProperties(['graph', 'nodesById', 'edgesById', 'usersById', 'nodes', 'edges'])),
+      // Only update the graph when we have nodes and edges
+      operators.filter(hasDefinedProperties([ 'nodes', 'edges' ])),
 
       // Only update the graph when we have valid settings
       operators.filter(R.where({
@@ -355,10 +352,8 @@ const NetworkStream = componentFromStream(
 )
 NetworkStream.displayName = 'NetworkStream'
 NetworkStream.propTypes = {
-  graph: MProps.Graph,
-  nodesById: PropTypes.objectOf(MProps.Node),
-  edgesById: PropTypes.objectOf(MProps.Edge),
-  usersById: PropTypes.objectOf(MProps.User),
+  nodes: PropTypes.arrayOf(CygraphNode).isRequired,
+  edges: PropTypes.arrayOf(CygraphEdge).isRequired,
 
   // These props come as raw inputs, so they are strings instead of numbers.
   settings: PropTypes.shape({
@@ -378,6 +373,8 @@ const graphContainer = css(important({
 
 const ConnectedNetworkStream = inject(stores => ({
   ...stores.state,
+
+  // Derived values need to be explicitly accessed
   nodes: stores.state.nodes,
   edges: stores.state.edges,
 }))(NetworkStream)
