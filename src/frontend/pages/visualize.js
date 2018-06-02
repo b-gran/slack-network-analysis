@@ -83,12 +83,18 @@ const initialState = observable({
     })
   },
 
+  // Just a wrapper around settings.maxEdgeWeight so that changes to settings
+  // don't trigger a re-render for edges & its dependents
+  get maxEdgeWeight () {
+    return this.settings.maxEdgeWeight
+  },
+
   get edges () {
     if (!this.edgesById) {
       return undefined
     }
 
-    const parsedMaxEdgeWeight = parseFloat(this.settings.maxEdgeWeight)
+    const parsedMaxEdgeWeight = parseFloat(this.maxEdgeWeight)
     const filterEdge = isNaN(parsedMaxEdgeWeight) ?
       // Don't filter edges if we don't have a real edge weight
       R.T :
