@@ -352,8 +352,8 @@ const NetworkStream = componentFromStream(
 )
 NetworkStream.displayName = 'NetworkStream'
 NetworkStream.propTypes = {
-  nodes: PropTypes.arrayOf(CygraphNode).isRequired,
-  edges: PropTypes.arrayOf(CygraphEdge).isRequired,
+  nodes: PropTypes.arrayOf(CygraphNode),
+  edges: PropTypes.arrayOf(CygraphEdge),
 
   // These props come as raw inputs, so they are strings instead of numbers.
   settings: PropTypes.shape({
