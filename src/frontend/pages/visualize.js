@@ -235,6 +235,21 @@ Sidebar.propTypes = {
   onSelectUser: PropTypes.func.isRequired,
 }
 
+const SidebarLabel = ({ children }) => (
+  <Typography classes={{ root: sidebarLabel.toString() }}>
+    { children }
+  </Typography>
+)
+SidebarLabel.displayName = 'SidebarLabel'
+SidebarLabel.propTypes = {
+  children: PropTypes.node,
+}
+
+const sidebarLabel = css(important({
+  color: '#ffffff',
+  padding: '0.5rem 0',
+}))
+
 class PSidebar extends React.Component {
   static displayName = 'PSidebar'
 
@@ -262,76 +277,65 @@ class PSidebar extends React.Component {
         height="100vh"
         width="300px"
         flexGrow="1"
-        background="blue"
+        background="linear-gradient(0deg, rgba(64,73,166,1) 0%, rgba(82,95,218,1) 100%)"
+        boxShadow="4px 0px 20px 1px"
         padding="0 15px">
-        <Div color="white" marginTop="15px">
-          <Typography classes={{ root: whiteText.toString() }}>
-            Maximum edge weight
-          </Typography>
-        </Div>
+        <Div marginTop="15px">
+          <SidebarLabel>Maximum edge weight</SidebarLabel>
+          <Div display="flex" alignItems="center">
+            <Div marginRight="15px">
+              <SidebarTextInput
+                width="4em"
+                value={this.props.settings.maxEdgeWeight}
+                onChange={evt => updateSettings({ maxEdgeWeight: evt.target.value })}/>
+            </Div>
 
-        <Div display="flex" alignItems="center">
-          <Div marginRight="15px">
-            <SidebarTextInput
-              width="4em"
-              value={this.props.settings.maxEdgeWeight}
-              onChange={evt => updateSettings({ maxEdgeWeight: evt.target.value })}/>
+            <Slider
+              className={style['rc-slider']}
+              value={safeMax(this.props.settings.maxEdgeWeight, 0.01)}
+              min={0.01}
+              max={1}
+              step={0.01}
+              onChange={value => updateSettings({ maxEdgeWeight: String(value) })}/>
           </Div>
-
-          <Slider
-            className={style['rc-slider']}
-            value={safeMax(this.props.settings.maxEdgeWeight, 0.01)}
-            min={0.01}
-            max={1}
-            step={0.01}
-            onChange={value => updateSettings({ maxEdgeWeight: String(value) })}/>
         </Div>
 
-        <Div color="white" marginTop="15px">
-          <Typography classes={{ root: whiteText.toString() }}>
-            Edge length
-          </Typography>
-        </Div>
+        <Div marginTop="15px">
+          <SidebarLabel>Edge length</SidebarLabel>
+          <Div display="flex" alignItems="center">
+            <Div marginRight="15px">
+              <SidebarTextInput
+                width="4em"
+                value={this.props.settings.edgeLength}
+                onChange={evt => updateSettings({ edgeLength: evt.target.value })}/>
+            </Div>
 
-        <Div display="flex" alignItems="center">
-          <Div marginRight="15px">
-            <SidebarTextInput
-              width="4em"
-              value={this.props.settings.edgeLength}
-              onChange={evt => updateSettings({ edgeLength: evt.target.value })}/>
+            <Slider
+              className={style['rc-slider']}
+              value={safeMax(this.props.settings.edgeLength, 1000)}
+              min={1000}
+              max={40000}
+              step={1000}
+              onChange={value => updateSettings({ edgeLength: String(value) })}/>
           </Div>
-
-          <Slider
-            className={style['rc-slider']}
-            value={safeMax(this.props.settings.edgeLength, 1000)}
-            min={1000}
-            max={40000}
-            step={1000}
-            onChange={value => updateSettings({ edgeLength: String(value) })}/>
         </Div>
 
-        <Div display="flex">
-          <Div color="white" marginTop="15px">
-            <Typography classes={{ root: whiteText.toString() }}>
-              Animation
-            </Typography>
+        <Div marginTop="15px">
+          <Div display="flex" alignItems="center">
+            <SidebarLabel>Animation</SidebarLabel>
+            <Switch checked={this.props.settings.animation}
+                    onChange={evt => updateSettings({ animation: evt.target.checked })}/>
           </Div>
-
-          <Switch checked={this.props.settings.animation}
-                  onChange={evt => updateSettings({ animation: evt.target.checked })}/>
         </Div>
 
-        <Div color="white" marginTop="15px">
-          <Typography classes={{ root: whiteText.toString() }}>
-            Users
-          </Typography>
+        <Div marginTop="15px">
+          <SidebarLabel>Users</SidebarLabel>
+          <UserSearchBar
+            onSelectUser={this.props.onSelectUser}
+            onChangeUserSearchTerm={this.props.onChangeUserSearchTerm}
+            matchingUsers={this.props.matchingUsers}
+            userSearchTerm={this.props.userSearchTerm} />
         </Div>
-
-        <UserSearchBar
-          onSelectUser={this.props.onSelectUser}
-          onChangeUserSearchTerm={this.props.onChangeUserSearchTerm}
-          matchingUsers={this.props.matchingUsers}
-          userSearchTerm={this.props.userSearchTerm} />
       </Div>
     )
   }
@@ -509,10 +513,6 @@ const SidebarTextInput = glamorous.input({
 const safeMax = (maybeInvalid, valid) => isFinite(maybeInvalid)
   ? Math.max(maybeInvalid, valid)
   : valid
-
-const whiteText = css(important({
-  color: '#ffffff',
-}))
 
 export default () => (
   <Provider state={state}>
