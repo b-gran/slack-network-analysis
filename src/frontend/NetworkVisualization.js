@@ -382,6 +382,8 @@ const NetworkTooltip = componentFromStream(
           return null
         }
 
+        // If we need to close the popover, we use the content from the previous event
+        // so that the close animation looks right.
         const open = tooltipEvent.event.type === SELECT
         const content = open ? tooltipEvent.content : lastEvent.content
 
@@ -392,14 +394,14 @@ const NetworkTooltip = componentFromStream(
           { tooltipEvent.position }
         </Popover>
 
+
+        // If we're moving the tooltip between nodes, we need to hide it first to trigger
+        // the animations for the new tooltip.
+        // Otherwise there's a really ugly flash during the content change.
         const reposition = (
           R.path(['event', 'type'], lastEvent) === SELECT &&
           R.path(['event', 'type'], tooltipEvent) === SELECT
         )
-
-        // If we're moving the tooltip between nodes, we need to hide it first to trigger
-        // the animations for the new and current tooltip.
-        // Otherwise there's a really ugly flash of content change.
         if (reposition) {
           return Rx.concat(
             Rx.of(null),
