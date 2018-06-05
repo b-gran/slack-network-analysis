@@ -341,13 +341,7 @@ UserDataPopover.propTypes = {
 
 const safeTooltipX = R.path([ 'position', 'x' ])
 const safeTooltipY = R.path([ 'position', 'y' ])
-
-const firstDefined = (...maybeDefined) => maybeDefined.reduce(
-  (definedEl, el) => (R.isNil(definedEl) && !R.isNil(el))
-    ? el
-    : definedEl,
-  undefined
-)
+const emptyContent = { position: null, content: null }
 
 const NetworkTooltip = componentFromStream(
   $props => {
@@ -357,48 +351,50 @@ const NetworkTooltip = componentFromStream(
       operators.mergeAll(1),
 
       // Keep track of the 2 most recent events.
-      operators.scan(([grandparent, parent], currentEvent) => [parent, currentEvent], [null, null]),
+      operators.scan(([grandparentContent, parentContent], currentEvent) => {
+        if (R.prop('type', currentEvent) === SELECT) {
+          return [ parentContent, {
+            event: currentEvent,
+            position: <Div
+              position="absolute"
+              top={safeTooltipY(currentEvent)}
+              left={safeTooltipX(currentEvent)}
+              width="1px"
+              height="1px"/>,
+            content: <div>{ currentEvent.node.data('name') }</div>,
+          }]
+        }
+
+        return [ parentContent, {
+          event: currentEvent,
+          position: <Div
+            position="absolute"
+            top={0}
+            left={0}
+            width="1px"
+            height="1px"/>,
+          content: null,
+        }]
+      }, [emptyContent, emptyContent]),
 
       operators.map(([lastEvent, tooltipEvent]) => {
         if (!tooltipEvent) {
           return null
         }
 
-        const open = tooltipEvent.type === SELECT
-
-        const top = firstDefined(
-          safeTooltipY(tooltipEvent),
-          safeTooltipY(lastEvent),
-          0
-        )
-
-        const left = firstDefined(
-          safeTooltipX(tooltipEvent),
-          safeTooltipX(lastEvent),
-          0
-        )
-
-        const lastData = (lastEvent && lastEvent.node.data) && lastEvent.node.data('name')
-
-        const content = open
-          ? <div>{ tooltipEvent.node.data('name') }</div>
-          : <div>{ lastData }</div>
+        const open = tooltipEvent.event.type === SELECT
+        const content = open ? tooltipEvent.content : lastEvent.content
 
         const popover = <Popover
           isOpen={open}
           place="below"
           body={<UserDataPopover>{ content }</UserDataPopover>}>
-          <Div
-            position="absolute"
-            top={top}
-            left={left}
-            width="1px"
-            height="1px"/>
+          { tooltipEvent.position }
         </Popover>
 
         const reposition = (
-          R.prop('type', lastEvent) === SELECT &&
-          R.prop('type', tooltipEvent) === SELECT
+          R.path(['event', 'type'], lastEvent) === SELECT &&
+          R.path(['event', 'type'], tooltipEvent) === SELECT
         )
 
         // If we're moving the tooltip between nodes, we need to hide it first to trigger
