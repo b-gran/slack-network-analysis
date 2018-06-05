@@ -21,6 +21,10 @@ import { hasDefinedProperties } from '../utils'
 import K from 'fast-keys'
 import { propagateLabels } from '../labelPropagation'
 
+import CyTooltipStream, { SELECT } from './CyTooltipStream'
+import { Div } from 'glamorous'
+import Popover from 'react-popover'
+
 const componentFromStream = Recompose.componentFromStreamWithConfig({
   fromESObservable: Rx.from,
   toESObservable: R.identity,
@@ -260,6 +264,7 @@ class Network extends React.Component {
     this.graphVisualisation = graphVisualisation
     this.layout = layout
     this.subscription = subscription
+    this.forceUpdate()
   }
 
   doesGraphNeedUpdate (prevProps) {
@@ -305,13 +310,116 @@ class Network extends React.Component {
     this.graphVisualisation = graphVisualisation
     this.layout = layout
     this.subscription = subscription
+    this.forceUpdate()
   }
 
   render () {
-    return <div
-      className={graphContainer.toString()}
-      ref={graphContainer => this.graphContainer = graphContainer}/>
+    const tooltipStream = this.graphVisualisation
+      ? CyTooltipStream(this.graphVisualisation)
+      : Rx.EMPTY
+    return <React.Fragment>
+      <div
+        className={graphContainer.toString()}
+        ref={graphContainer => this.graphContainer = graphContainer}/>
+
+      <NetworkTooltip $tooltip={tooltipStream} />
+    </React.Fragment>
   }
+}
+
+const UserDataPopover = props => (
+  <Div
+    padding="10px" background="#FFF" borderRadius="4px"
+    boxShadow="rgba(0, 0, 0, 0.1) 0px 4px 8px 4px, rgba(0, 0, 0, 0.5) 0px 1px 4px 0px">
+    {props.children}
+  </Div>
+)
+UserDataPopover.displayName = 'UserDataPopover'
+UserDataPopover.propTypes = {
+  children: PropTypes.node,
+}
+
+const safeTooltipX = R.path([ 'position', 'x' ])
+const safeTooltipY = R.path([ 'position', 'y' ])
+
+const firstDefined = (...maybeDefined) => maybeDefined.reduce(
+  (definedEl, el) => (R.isNil(definedEl) && !R.isNil(el))
+    ? el
+    : definedEl,
+  undefined
+)
+
+const NetworkTooltip = componentFromStream(
+  $props => {
+    return $props.pipe(
+      // Flatten the latest $tooltip stream from the props.
+      operators.map(R.prop('$tooltip')),
+      operators.mergeAll(1),
+
+      // Keep track of the 2 most recent events.
+      operators.scan(([grandparent, parent], currentEvent) => [parent, currentEvent], [null, null]),
+
+      operators.map(([lastEvent, tooltipEvent]) => {
+        if (!tooltipEvent) {
+          return null
+        }
+
+        const open = tooltipEvent.type === SELECT
+
+        const top = firstDefined(
+          safeTooltipY(tooltipEvent),
+          safeTooltipY(lastEvent),
+          0
+        )
+
+        const left = firstDefined(
+          safeTooltipX(tooltipEvent),
+          safeTooltipX(lastEvent),
+          0
+        )
+
+        const lastData = (lastEvent && lastEvent.node.data) && lastEvent.node.data('name')
+
+        const content = open
+          ? <div>{ tooltipEvent.node.data('name') }</div>
+          : <div>{ lastData }</div>
+
+        const popover = <Popover
+          isOpen={open}
+          place="below"
+          body={<UserDataPopover>{ content }</UserDataPopover>}>
+          <Div
+            position="absolute"
+            top={top}
+            left={left}
+            width="1px"
+            height="1px"/>
+        </Popover>
+
+        const reposition = (
+          R.prop('type', lastEvent) === SELECT &&
+          R.prop('type', tooltipEvent) === SELECT
+        )
+
+        // If we're moving the tooltip between nodes, we need to hide it first to trigger
+        // the animations for the new and current tooltip.
+        // Otherwise there's a really ugly flash of content change.
+        if (reposition) {
+          return Rx.concat(
+            Rx.of(null),
+            Rx.of(popover)
+          )
+        }
+
+        return Rx.of(popover)
+      }),
+      operators.mergeAll()
+    )
+  }
+)
+NetworkTooltip.propTypes = {
+  // Stream of tooltip events from a CyTooltipStream
+  $tooltip: PropTypes.object.isRequired,
 }
 
 const NetworkEmpty = () => (
