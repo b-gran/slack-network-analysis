@@ -1,4 +1,5 @@
 import * as Rx from 'rxjs'
+import * as R from 'ramda'
 
 export const SELECT = 'SELECT'
 export const UNSELECT = 'UNSELECT'
@@ -10,7 +11,7 @@ export const UNSELECT = 'UNSELECT'
 // * Emits UNSELECT when any node or node collection is unselected
 export default function (cy) {
   return Rx.Observable.create(observer => {
-    const tapHandler = evt => {
+    const selectHandler = evt => {
       const node = evt.target
       observer.next({
         type: SELECT,
@@ -18,7 +19,6 @@ export default function (cy) {
         node: node,
       })
     }
-    cy.on('tap', 'node', tapHandler)
 
     const unselectHandler = evt => {
       const node = evt.target
@@ -27,12 +27,31 @@ export default function (cy) {
         node: node,
       })
     }
-    const nodes = cy.nodes()
-    nodes.on('unselect', unselectHandler)
+
+    // Trigger unselect when the background or a non-node is clicked.
+    const backgroundUnselectHandler = R.when(
+      evt => (
+        typeof evt.target === 'object' &&
+        (
+          evt.target === cy || // The entire graph is the target when the background is clicked
+          !evt.target.isNode()
+        )
+      ),
+      unselectHandler
+    )
+
+    cy.on('tap', 'node', selectHandler)
+    cy.on('tapstart', backgroundUnselectHandler)
+    cy.on('pan', unselectHandler)
+    cy.on('zoom', unselectHandler)
+    cy.on('resize', unselectHandler)
 
     return () => {
-      cy.removeListener('tap', 'node', tapHandler)
-      nodes.removeListener('unselect', unselectHandler)
+      cy.removeListener('tap', 'node', selectHandler)
+      cy.removeListener('tapstart', backgroundUnselectHandler)
+      cy.removeListener('pan', unselectHandler)
+      cy.removeListener('zoom', unselectHandler)
+      cy.removeListener('resize', unselectHandler)
     }
   })
 }
