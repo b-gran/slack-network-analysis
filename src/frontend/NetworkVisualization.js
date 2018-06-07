@@ -6,7 +6,6 @@ import PropTypes from 'prop-types'
 import cytoscape from 'cytoscape'
 import cola from 'cytoscape-cola'
 
-import * as MProps from './props'
 import { important } from './utils'
 
 import * as R from 'ramda'
@@ -21,7 +20,7 @@ import { hasDefinedProperties } from '../utils'
 import K from 'fast-keys'
 import { propagateLabels } from '../labelPropagation'
 
-import CyTooltipStream, { SELECT } from './CyTooltipStream'
+import CyTooltipStream, { SELECT, UNSELECT } from './CyTooltipStream'
 import { Div } from 'glamorous'
 import Popover from 'react-popover'
 
@@ -322,30 +321,58 @@ class Network extends React.Component {
         className={graphContainer.toString()}
         ref={graphContainer => this.graphContainer = graphContainer}/>
 
-      <NetworkTooltip $tooltip={tooltipStream} />
+      <NetworkTooltip $tooltip={tooltipStream} cy={this.graphVisualisation} />
     </React.Fragment>
   }
 }
 
-const UserDataPopover = props => (
-  <Div
-    padding="10px" background="#FFF" borderRadius="4px"
-    boxShadow="rgba(0, 0, 0, 0.1) 0px 4px 8px 4px, rgba(0, 0, 0, 0.5) 0px 1px 4px 0px">
-    {props.children}
-  </Div>
-)
-UserDataPopover.displayName = 'UserDataPopover'
-UserDataPopover.propTypes = {
-  children: PropTypes.node,
+const PUserDataPopover = ({ node, cy }) => {
+  const name = node.data('name')
+
+  const connections = node.neighborhood().edges().map(edge => {
+    const targetNode = edge.target().data('id') === node.data('id')
+      ? edge.source()
+      : edge.target()
+
+    return [ targetNode, edge ]
+  })
+
+  return (
+    <Div
+      padding="10px" background="#FFF" borderRadius="4px"
+      boxShadow="rgba(0, 0, 0, 0.1) 0px 4px 8px 4px, rgba(0, 0, 0, 0.5) 0px 1px 4px 0px">
+      {name}
+      <Div>
+        <Div>Connections ({connections.length})</Div>
+        <ul>
+          {connections.map(([ targetNode, edge ]) => (
+            <li key={targetNode.data('name')}>
+              { targetNode.data('name') }
+              { edge.data('weight') }
+            </li>
+          ))}
+        </ul>
+      </Div>
+    </Div>
+  )
 }
+PUserDataPopover.displayName = 'PUserDataPopover'
+PUserDataPopover.propTypes = {
+  node: PropTypes.object.isRequired,
+
+  // TODO: is this prop actually needed?
+  cy: PropTypes.object.isRequired,
+}
+
+const UserDataPopover = PUserDataPopover
 
 const safeTooltipX = R.path([ 'position', 'x' ])
 const safeTooltipY = R.path([ 'position', 'y' ])
-const emptyContent = { position: null, content: null }
+const emptyContent = { position: null }
 
 const NetworkTooltip = componentFromStream(
   $props => {
-    return $props.pipe(
+    const $content = $props.pipe(
       // Flatten the latest $tooltip stream from the props.
       operators.map(R.prop('$tooltip')),
       operators.mergeAll(1),
@@ -361,7 +388,6 @@ const NetworkTooltip = componentFromStream(
               left={safeTooltipX(currentEvent)}
               width="1px"
               height="1px"/>,
-            content: <div>{ currentEvent.node.data('name') }</div>,
           }]
         }
 
@@ -373,23 +399,34 @@ const NetworkTooltip = componentFromStream(
             left={0}
             width="1px"
             height="1px"/>,
-          content: null,
         }]
-      }, [emptyContent, emptyContent]),
+      }, [emptyContent, emptyContent])
+    )
 
-      operators.map(([lastEvent, currentEvent]) => {
+    const $cy = $props.pipe(operators.map(R.prop('cy')))
+
+    return Rx.combineLatest($content, $cy).pipe(
+      operators.map(([[lastEvent, currentEvent], cy]) => {
+        const isEmptyEvent = R.pipe(
+          R.path(['event', 'type']),
+          R.anyPass([ R.isNil, R.equals(UNSELECT) ])
+        )
+        const isEmptyClick = isEmptyEvent(currentEvent) && isEmptyEvent(lastEvent)
+        if (isEmptyClick) {
+          return Rx.of(null)
+        }
+
         // If we need to close the popover, we use the content from the previous event
         // so that the close animation looks right.
         const open = currentEvent.event.type === SELECT
-        const content = open ? currentEvent.content : lastEvent.content
+        const node = open ? currentEvent.event.node : lastEvent.event.node
 
         const popover = <Popover
           isOpen={open}
           place="below"
-          body={<UserDataPopover>{ content }</UserDataPopover>}>
-          { currentEvent.position }
+          body={<UserDataPopover node={node} cy={cy} />}>
+          {currentEvent.position}
         </Popover>
-
 
         // If we're moving the tooltip between nodes, we need to hide it first to trigger
         // the animations for the new tooltip.
@@ -414,6 +451,9 @@ const NetworkTooltip = componentFromStream(
 NetworkTooltip.propTypes = {
   // Stream of tooltip events from a CyTooltipStream
   $tooltip: PropTypes.object.isRequired,
+
+  // Actual cytoscape graph. May be nil
+  cy: PropTypes.object,
 }
 
 const NetworkEmpty = () => (
