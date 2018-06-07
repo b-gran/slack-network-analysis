@@ -1,8 +1,11 @@
 import * as Rx from 'rxjs'
+import * as operators from 'rxjs/operators'
 import * as R from 'ramda'
 
 export const SELECT = 'SELECT'
 export const UNSELECT = 'UNSELECT'
+
+const isSelectEvent = R.pipe(R.prop('type'), R.equals(SELECT))
 
 // Given a cytoscape graph, returns a stream that emits events
 // when nodes are selected and unselected.
@@ -10,7 +13,7 @@ export const UNSELECT = 'UNSELECT'
 // * Emits SELECT when a single node is selected via `tap` event
 // * Emits UNSELECT when any node or node collection is unselected
 export default function (cy) {
-  return Rx.Observable.create(observer => {
+  const $select = Rx.Observable.create(observer => {
     const selectHandler = evt => {
       const node = evt.target
       observer.next({
@@ -20,6 +23,12 @@ export default function (cy) {
       })
     }
 
+    cy.on('tap', 'node', selectHandler)
+
+    return () => cy.removeListener('tap', 'node', selectHandler)
+  })
+
+  const $unselect = Rx.Observable.create(observer => {
     const unselectHandler = evt => {
       const node = evt.target
       observer.next({
@@ -40,18 +49,23 @@ export default function (cy) {
       unselectHandler
     )
 
-    cy.on('tap', 'node', selectHandler)
     cy.on('tapstart', backgroundUnselectHandler)
-    cy.on('pan', unselectHandler)
-    cy.on('zoom', unselectHandler)
-    cy.on('resize', unselectHandler)
+    cy.on('viewport', unselectHandler)
 
     return () => {
-      cy.removeListener('tap', 'node', selectHandler)
       cy.removeListener('tapstart', backgroundUnselectHandler)
-      cy.removeListener('pan', unselectHandler)
-      cy.removeListener('zoom', unselectHandler)
-      cy.removeListener('resize', unselectHandler)
+      cy.removeListener('viewport', unselectHandler)
     }
   })
+
+  return Rx.merge($select, $unselect).pipe(
+    // Only emit events if we're selecting something, or going from selected -> unselected.
+    operators.scan(
+      (lastEvent, event) => (isSelectEvent(event) || isSelectEvent(lastEvent))
+        ? event
+        : null,
+      null
+    ),
+    operators.filter(Boolean)
+  )
 }
