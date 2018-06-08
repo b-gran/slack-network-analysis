@@ -21,7 +21,7 @@ import K from 'fast-keys'
 import { propagateLabels } from '../labelPropagation'
 
 import CyTooltipStream, { SELECT, UNSELECT } from './CyTooltipStream'
-import { Div, Li, Span, Ul } from 'glamorous'
+import { Div, Li, Span, Ul, B } from 'glamorous'
 import Popover from 'react-popover'
 import Typography from 'material-ui/Typography'
 
@@ -125,8 +125,8 @@ class Network extends React.Component {
       elements: data,
     })
 
-    // Generates a function to compute the degree centrality of nodes based on edge weight and
-    // degree of the node.
+    // Generates a function to compute the degree centrality (normalized) of nodes based on edge
+    // weight and degree of the node.
     const getDegreeCentrality = dataOnly.$().dcn({
       alpha: 0.5,
       weight: edge => edge.data('weight'),
@@ -134,7 +134,12 @@ class Network extends React.Component {
 
     // Compute degree centrality for every node and store as node.data.score
     dataOnly.nodes().forEach(node => {
-      node.data('score', getDegreeCentrality(node))
+      const normalizedDegreeCentrality = getDegreeCentrality(node)
+
+      // Used for sizing the node
+      node.data('score', normalizedDegreeCentrality)
+
+      node.data('normalizedDegreeCentrality', normalizedDegreeCentrality)
     })
 
     const cyGraph = cytoscape({
@@ -347,6 +352,14 @@ const PUserDataPopover = ({ node }) => {
 
   const getBarWidthString = edge => `${(minWeight / parseFloat(edge.data('weight'))) * 100}%`
 
+  // We need to compute this during render because it's extremely expensive, so we can't batch
+  // them all up during graph initialization.
+  // TODO: memoize
+  const getClosenessCentrality = node.cy().$().ccn({
+    weight: edge => edge.data('weight'),
+  }).closeness
+  const closeness = getClosenessCentrality(node)
+
   return (
     <Div
       padding="10px" background="#FFF" borderRadius="4px"
@@ -373,6 +386,28 @@ const PUserDataPopover = ({ node }) => {
             ))}
           </Ul>
         </Div>
+      </Div>
+
+      <Div marginTop="10px" display="flex">
+
+        <Div border="1px solid #aaa" padding="3px 6px" flexGrow="1">
+          <Typography variant="subheading">Degree centrality</Typography>
+          <Typography>
+            <B title={node.data('normalizedDegreeCentrality')} borderBottom="1px dashed #aaa">
+              { node.data('normalizedDegreeCentrality').toFixed(4) }
+            </B>
+          </Typography>
+        </Div>
+
+        <Div border="1px solid #aaa" padding="3px 6px" flexGrow="1">
+          <Typography variant="subheading">Closeness centrality</Typography>
+          <Typography>
+            <B title={closeness} borderBottom="1px dashed #aaa">
+              { closeness.toFixed(4) }
+            </B>
+          </Typography>
+        </Div>
+
       </Div>
     </Div>
   )
