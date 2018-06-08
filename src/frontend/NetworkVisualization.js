@@ -176,8 +176,10 @@ class Network extends React.Component {
         style: {
           "width": "mapData(score, 0, 1, 20, 60)",
           "height": "mapData(score, 0, 1, 20, 60)",
-          content: node => `${node.data('name')} (${node.data('score')})`,
+          content: node => node.data('name'),
           'font-size': '20px',
+          'text-background-color': '#fff',
+          'text-background-opacity': '0.5',
         },
       },
       ...selectors,
