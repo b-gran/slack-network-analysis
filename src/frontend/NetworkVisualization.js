@@ -316,9 +316,11 @@ class Network extends React.Component {
   }
 
   render () {
+    // TODO: this might be leaking memory on every render
     const tooltipStream = this.graphVisualisation
       ? CyTooltipStream(this.graphVisualisation)
       : Rx.EMPTY
+
     return <React.Fragment>
       <div
         className={graphContainer.toString()}
