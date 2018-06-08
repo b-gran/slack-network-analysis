@@ -347,7 +347,9 @@ const PUserDataPopover = ({ node }) => {
     <Div
       padding="10px" background="#FFF" borderRadius="4px"
       boxShadow="rgba(0, 0, 0, 0.1) 0px 4px 8px 4px, rgba(0, 0, 0, 0.5) 0px 1px 4px 0px">
-      <Typography variant="headline">{name}</Typography>
+      <Div textAlign="center" paddingBottom="10px">
+        <Typography variant="headline">{name}</Typography>
+      </Div>
       <Div border="1px solid #aaa">
         <Div borderBottom="1px solid #aaa" padding="3px 6px">
           <Typography variant="subheading">Connections ({connections.length})</Typography>
