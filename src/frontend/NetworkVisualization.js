@@ -21,8 +21,9 @@ import K from 'fast-keys'
 import { propagateLabels } from '../labelPropagation'
 
 import CyTooltipStream, { SELECT, UNSELECT } from './CyTooltipStream'
-import { Div } from 'glamorous'
+import { Div, Li, Span, Ul } from 'glamorous'
 import Popover from 'react-popover'
+import Typography from 'material-ui/Typography'
 
 const componentFromStream = Recompose.componentFromStreamWithConfig({
   fromESObservable: Rx.from,
@@ -321,12 +322,12 @@ class Network extends React.Component {
         className={graphContainer.toString()}
         ref={graphContainer => this.graphContainer = graphContainer}/>
 
-      <NetworkTooltip $tooltip={tooltipStream} cy={this.graphVisualisation} />
+      <NetworkTooltip $tooltip={tooltipStream} />
     </React.Fragment>
   }
 }
 
-const PUserDataPopover = ({ node, cy }) => {
+const PUserDataPopover = ({ node }) => {
   const name = node.data('name')
 
   const connections = node.neighborhood().edges().map(edge => {
@@ -337,21 +338,35 @@ const PUserDataPopover = ({ node, cy }) => {
     return [ targetNode, edge ]
   })
 
+  const sortedConnections = R.sortBy(([, edge]) => parseFloat(edge.data('weight')), connections)
+  const minWeight = parseFloat(sortedConnections[0][1].data('weight'))
+
+  const getBarWidthString = edge => `${(minWeight / parseFloat(edge.data('weight'))) * 100}%`
+
   return (
     <Div
       padding="10px" background="#FFF" borderRadius="4px"
       boxShadow="rgba(0, 0, 0, 0.1) 0px 4px 8px 4px, rgba(0, 0, 0, 0.5) 0px 1px 4px 0px">
-      {name}
-      <Div>
-        <Div>Connections ({connections.length})</Div>
-        <ul>
-          {connections.map(([ targetNode, edge ]) => (
-            <li key={targetNode.data('name')}>
-              { targetNode.data('name') }
-              { edge.data('weight') }
-            </li>
-          ))}
-        </ul>
+      <Typography variant="headline">{name}</Typography>
+      <Div border="1px solid #aaa">
+        <Div borderBottom="1px solid #aaa" padding="3px 6px">
+          <Typography variant="subheading">Connections ({connections.length})</Typography>
+        </Div>
+
+        <Div maxHeight="200px" overflow="scroll">
+          <Ul listStyle="none" padding="0" margin="0" display="table">
+            {sortedConnections.map(([ targetNode, edge ]) => (
+              <Li key={targetNode.data('name')} display="table-row">
+                <Div display="table-cell" padding="5px 0">
+                  <Typography><Span padding="0 6px">{ targetNode.data('name') }</Span></Typography>
+                </Div>
+                <Div minWidth="150px" display="table-cell" paddingRight="6px">
+                  <Div width={getBarWidthString(edge)} height="0.5rem" background="#3f9eff" />
+                </Div>
+              </Li>
+            ))}
+          </Ul>
+        </Div>
       </Div>
     </Div>
   )
@@ -359,9 +374,6 @@ const PUserDataPopover = ({ node, cy }) => {
 PUserDataPopover.displayName = 'PUserDataPopover'
 PUserDataPopover.propTypes = {
   node: PropTypes.object.isRequired,
-
-  // TODO: is this prop actually needed?
-  cy: PropTypes.object.isRequired,
 }
 
 const UserDataPopover = PUserDataPopover
@@ -403,10 +415,8 @@ const NetworkTooltip = componentFromStream(
       }, [emptyContent, emptyContent])
     )
 
-    const $cy = $props.pipe(operators.map(R.prop('cy')))
-
-    return Rx.combineLatest($content, $cy).pipe(
-      operators.map(([[lastEvent, currentEvent], cy]) => {
+    return $content.pipe(
+      operators.map(([lastEvent, currentEvent]) => {
         const isEmptyEvent = R.pipe(
           R.path(['event', 'type']),
           R.anyPass([ R.isNil, R.equals(UNSELECT) ])
@@ -424,7 +434,7 @@ const NetworkTooltip = componentFromStream(
         const popover = <Popover
           isOpen={open}
           place="below"
-          body={<UserDataPopover node={node} cy={cy} />}>
+          body={<UserDataPopover node={node} />}>
           {currentEvent.position}
         </Popover>
 
@@ -451,9 +461,6 @@ const NetworkTooltip = componentFromStream(
 NetworkTooltip.propTypes = {
   // Stream of tooltip events from a CyTooltipStream
   $tooltip: PropTypes.object.isRequired,
-
-  // Actual cytoscape graph. May be nil
-  cy: PropTypes.object,
 }
 
 const NetworkEmpty = () => (
