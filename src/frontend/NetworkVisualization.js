@@ -23,6 +23,7 @@ import CyTooltipStream, { SELECT, UNSELECT } from './CyTooltipStream'
 import { Div, Li, Span, Ul, B } from 'glamorous'
 import Popover from 'react-popover'
 import Typography from 'material-ui/Typography'
+import { mobxHmrObservable } from './config'
 
 const SettingsProp = PropTypes.shape({
   maxEdgeWeight: PropTypes.number.isRequired,
@@ -328,7 +329,7 @@ class Network extends React.Component {
   }
 }
 
-const PUserDataPopover = ({ node }) => {
+const UserDataPopover = ({ node }) => {
   const name = node.data('name')
 
   const connections = node.neighborhood().edges().map(edge => {
@@ -381,33 +382,50 @@ const PUserDataPopover = ({ node }) => {
       </Div>
 
       <Div marginTop="10px" display="flex">
-        <Div border="1px solid #aaa" padding="3px 6px" flexGrow="1">
-          <Typography variant="subheading">Degree centrality</Typography>
-          <Typography>
-            <B title={node.data('normalizedDegreeCentrality')} borderBottom="1px dashed #aaa">
-              { node.data('normalizedDegreeCentrality').toFixed(4) }
-            </B>
-          </Typography>
-        </Div>
+        <NetworkDataField label="Degree centrality">
+          <FloatText data={node.data('normalizedDegreeCentrality')} precision={4} />
+        </NetworkDataField>
 
-        <Div border="1px solid #aaa" padding="3px 6px" flexGrow="1">
-          <Typography variant="subheading">Closeness centrality</Typography>
-          <Typography>
-            <B title={closeness} borderBottom="1px dashed #aaa">
-              { closeness.toFixed(4) }
-            </B>
-          </Typography>
-        </Div>
+        <NetworkDataField label="Closeness centrality">
+          <FloatText data={closeness} precision={4} />
+        </NetworkDataField>
       </Div>
+
+      <NetworkDataField label="Label">
+        { node.data('label') }
+      </NetworkDataField>
     </Div>
   )
 }
-PUserDataPopover.displayName = 'PUserDataPopover'
-PUserDataPopover.propTypes = {
+UserDataPopover.displayName = 'UserDataPopover'
+UserDataPopover.propTypes = {
   node: PropTypes.object.isRequired,
 }
 
-const UserDataPopover = PUserDataPopover
+const NetworkDataField = ({ label, children }) => (
+  <Div border="1px solid #aaa" padding="3px 6px" flexGrow="1">
+    <Typography variant="subheading">{ label }</Typography>
+    <Typography>{ children }</Typography>
+  </Div>
+)
+NetworkDataField.displayName = 'NetworkDataField'
+NetworkDataField.propTypes = {
+  label: PropTypes.node.isRequired,
+  children: PropTypes.node.isRequired,
+}
+
+const FloatText = ({ data, precision }) => !R.isNil(precision) ?
+  <B title={data} borderBottom="1px dashed #aaa">
+    { data.toFixed(precision) }
+  </B> :
+  <B>{ data }</B>
+FloatText.displayName = 'FloatText'
+FloatText.propTypes = {
+  data: PropTypes.number.isRequired,
+
+  // Optional: number of digits of float precision
+  precision: PropTypes.number,
+}
 
 const safeTooltipX = R.path([ 'position', 'x' ])
 const safeTooltipY = R.path([ 'position', 'y' ])
