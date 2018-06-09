@@ -428,7 +428,7 @@ const NetworkTooltip = componentFromStream(
     const $content = $props.pipe(
       // Flatten the latest $tooltip stream from the props.
       operators.map(R.prop('$tooltip')),
-      operators.mergeAll(),
+      operators.switchAll(),
 
       // Keep track of the 2 most recent events.
       operators.scan(([grandparentContent, parentContent], currentEvent) => {
