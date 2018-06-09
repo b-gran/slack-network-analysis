@@ -58,6 +58,59 @@ function getColorsForLabels (labelsByNodeId) {
   return colorsByLabel
 }
 
+function getLabelGenerator () {
+  const sequence = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  const labelCount = sequence.length
+
+  let index = 0
+
+  return () => {
+    // Convert the index to a number whose base is the length of the sequence.
+    // Each digit will correspond to a position in the sequence
+    // This number is string format.
+    const sequencePositions = Array.from(index.toString(labelCount))
+        // Convert each character of the high-base number-string to a Number.
+        .map(char => parseInt(char, labelCount))
+
+    index = index + 1
+
+    // If there's only one digit, we just index directly into the sequence.
+    if (sequencePositions.length === 1) {
+      return sequence[sequencePositions[0]]
+    }
+
+    // Otherwise, we need to shift the first digit one position to the left in the sequence.
+    // For example, if the digits were 100, these positions would correspond directly to BAB.
+    // We actually want this label to be AAA - so we need to shift the first digit.
+    const [ first, ...rest ] = sequencePositions
+    return [
+      sequence[first-1],
+      ...rest.map(n => sequence[n]),
+    ].join('')
+  }
+}
+
+// Given a map of nodeId -> label, returns a new map with the same node=>label mappings, but with
+// human readable names for the labels (instead of whatever labels are in use).
+function getHumanReadableLabels (labelsByNodeId) {
+  const getLabel = getLabelGenerator()
+  const uniqueLabels = new Set(labelsByNodeId.values())
+
+  // Generate a human label for each unique original label
+  const humanReadableLabelsByOriginalLabel = new Map()
+  for (const label of uniqueLabels) {
+    humanReadableLabelsByOriginalLabel.set(label, getLabel())
+  }
+
+  // Convert the original labels to the new format
+  const humanReadableLabelsByNodeId = new Map()
+  for (const [nodeId, label] of labelsByNodeId) {
+    humanReadableLabelsByNodeId.set(nodeId, humanReadableLabelsByOriginalLabel.get(label))
+  }
+
+  return humanReadableLabelsByNodeId
+}
+
 const NodePrimaryColor = '#f50057'
 const NodeSecondaryColor = '#999999'
 
@@ -153,7 +206,7 @@ class Network extends React.Component {
     // NEIGHBORHOOD DETECTION
 
     // Generate labels and colors
-    const labels = propagateLabels(cyGraph)
+    const labels = getHumanReadableLabels(propagateLabels(cyGraph))
     const colorsByLabel = getColorsForLabels(labels)
 
     // Generate selectors for each label
