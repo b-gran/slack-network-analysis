@@ -25,6 +25,7 @@ export default function (cy) {
 
     cy.on('tap', 'node', selectHandler)
 
+    cy.on('destroy', () => observer.complete())
     return () => cy.removeListener('tap', 'node', selectHandler)
   })
 
@@ -52,6 +53,7 @@ export default function (cy) {
     cy.on('tapstart', backgroundUnselectHandler)
     cy.on('viewport', unselectHandler)
 
+    cy.on('destroy', () => observer.complete())
     return () => {
       cy.removeListener('tapstart', backgroundUnselectHandler)
       cy.removeListener('viewport', unselectHandler)
