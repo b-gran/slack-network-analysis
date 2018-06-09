@@ -103,6 +103,7 @@ class Network extends React.Component {
   graphVisualisation = null
   layout = null
   subscription = null
+  $tooltip = Rx.EMPTY
 
   renderGraph () {
     const edgeLengthVal = this.props.settings.edgeLength
@@ -263,14 +264,15 @@ class Network extends React.Component {
         ).then(() => user.removeStyle())
       })
 
-    return [cyGraph, layout, subscription]
+    return [cyGraph, layout, subscription, CyTooltipStream(cyGraph)]
   }
 
   componentDidMount () {
-    const [ graphVisualisation, layout, subscription ] = this.renderGraph()
+    const [ graphVisualisation, layout, subscription, $tooltip ] = this.renderGraph()
     this.graphVisualisation = graphVisualisation
     this.layout = layout
     this.subscription = subscription
+    this.$tooltip = $tooltip
     this.forceUpdate()
   }
 
@@ -313,25 +315,21 @@ class Network extends React.Component {
       this.layout = null
     }
 
-    const [ graphVisualisation, layout, subscription ] = this.renderGraph()
+    const [ graphVisualisation, layout, subscription, $tooltip ] = this.renderGraph()
     this.graphVisualisation = graphVisualisation
     this.layout = layout
     this.subscription = subscription
+    this.$tooltip = $tooltip
     this.forceUpdate()
   }
 
   render () {
-    // TODO: this might be leaking memory on every render
-    const tooltipStream = this.graphVisualisation
-      ? CyTooltipStream(this.graphVisualisation)
-      : Rx.EMPTY
-
     return <React.Fragment>
       <div
         className={graphContainer.toString()}
         ref={graphContainer => this.graphContainer = graphContainer}/>
 
-      <NetworkTooltip $tooltip={tooltipStream} />
+      <NetworkTooltip $tooltip={this.$tooltip} />
     </React.Fragment>
   }
 }
@@ -389,7 +387,6 @@ const PUserDataPopover = ({ node }) => {
       </Div>
 
       <Div marginTop="10px" display="flex">
-
         <Div border="1px solid #aaa" padding="3px 6px" flexGrow="1">
           <Typography variant="subheading">Degree centrality</Typography>
           <Typography>
@@ -407,7 +404,6 @@ const PUserDataPopover = ({ node }) => {
             </B>
           </Typography>
         </Div>
-
       </Div>
     </Div>
   )
