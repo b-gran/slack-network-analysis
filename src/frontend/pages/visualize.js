@@ -175,7 +175,9 @@ class Visualize extends React.Component {
         </Head>
         <Div display="flex" flexDirection="row" justifyContent="center" alignItems="center"
              height="100vh" position="relative">
-          <NetworkVisualization $selectUser={this.state.selectUserStream} />
+          <NetworkVisualization
+            $selectUser={this.state.selectUserStream}
+            onSelectUser={this.state.selectUserHandler} />
 
           <Sidebar onSelectUser={this.state.selectUserHandler} />
         </Div>

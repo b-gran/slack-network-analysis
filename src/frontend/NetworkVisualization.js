@@ -18,12 +18,12 @@ import { inject } from 'mobx-react'
 import { hasDefinedProperties } from '../utils'
 import K from 'fast-keys'
 import { propagateLabels } from '../labelPropagation'
+import * as MProps from './props'
 
 import CyTooltipStream, { SELECT, UNSELECT } from './CyTooltipStream'
-import { Div, Li, Span, Ul, B } from 'glamorous'
+import { Div, Li, Ul, B, A } from 'glamorous'
 import Popover from 'react-popover'
 import Typography from 'material-ui/Typography'
-import { mobxHmrObservable } from './config'
 
 const SettingsProp = PropTypes.shape({
   maxEdgeWeight: PropTypes.number.isRequired,
@@ -139,10 +139,12 @@ class Network extends React.Component {
   static propTypes = {
     nodes: PropTypes.arrayOf(CygraphNode).isRequired,
     edges: PropTypes.arrayOf(CygraphEdge).isRequired,
+    usersById: PropTypes.objectOf(MProps.User),
 
     settings: SettingsProp.isRequired,
 
     $selectUser: PropTypes.object.isRequired,
+    onSelectUser: PropTypes.func.isRequired,
   }
 
   static settingsRenderWhitelist = new Set([ 'animation' ])
@@ -372,17 +374,18 @@ class Network extends React.Component {
   }
 
   render () {
+    const selectUserById = userId => this.props.onSelectUser(this.props.usersById[userId])
     return <React.Fragment>
       <div
         className={graphContainer.toString()}
         ref={graphContainer => this.graphContainer = graphContainer}/>
 
-      <NetworkTooltip $tooltip={this.$tooltip} />
+      <NetworkTooltip $tooltip={this.$tooltip} onSelectUser={selectUserById} />
     </React.Fragment>
   }
 }
 
-const UserDataPopover = ({ node }) => {
+const UserDataPopover = ({ node, onSelectUser }) => {
   const name = node.data('name')
 
   const connections = node.neighborhood().edges().map(edge => {
@@ -423,7 +426,11 @@ const UserDataPopover = ({ node }) => {
             {sortedConnections.map(([ targetNode, edge ]) => (
               <Li key={targetNode.data('name')} display="table-row">
                 <Div display="table-cell" padding="5px 0">
-                  <Typography><Span padding="0 6px">{ targetNode.data('name') }</Span></Typography>
+                  <Typography>
+                    <A onClick={() => onSelectUser(targetNode.data('userId'))} padding="0 6px">
+                      { targetNode.data('name') }
+                    </A>
+                  </Typography>
                 </Div>
                 <Div minWidth="150px" display="table-cell" paddingRight="6px">
                   <Div width={getBarWidthString(edge)} height="0.5rem" background="#3f9eff" />
@@ -445,7 +452,7 @@ const UserDataPopover = ({ node }) => {
       </Div>
 
       <NetworkDataField label="Label">
-        { node.data('label') }
+        <b>{ node.data('label') }</b>
       </NetworkDataField>
     </Div>
   )
@@ -453,6 +460,7 @@ const UserDataPopover = ({ node }) => {
 UserDataPopover.displayName = 'UserDataPopover'
 UserDataPopover.propTypes = {
   node: PropTypes.object.isRequired,
+  onSelectUser: PropTypes.func.isRequired,
 }
 
 const NetworkDataField = ({ label, children }) => (
@@ -517,8 +525,8 @@ const NetworkTooltip = componentFromStream(
       }, [emptyContent, emptyContent])
     )
 
-    return $content.pipe(
-      operators.map(([lastEvent, currentEvent]) => {
+    return Rx.combineLatest($content, $props).pipe(
+      operators.map(([[lastEvent, currentEvent], { onSelectUser }]) => {
         const isEmptyEvent = R.pipe(
           R.path(['event', 'type']),
           R.anyPass([ R.isNil, R.equals(UNSELECT) ])
@@ -536,7 +544,7 @@ const NetworkTooltip = componentFromStream(
         const popover = <Popover
           isOpen={open}
           place="below"
-          body={<UserDataPopover node={node} />}>
+          body={<UserDataPopover node={node} onSelectUser={onSelectUser} />}>
           {currentEvent.position}
         </Popover>
 
@@ -563,6 +571,8 @@ const NetworkTooltip = componentFromStream(
 NetworkTooltip.propTypes = {
   // Stream of tooltip events from a CyTooltipStream
   $tooltip: PropTypes.object.isRequired,
+
+  onSelectUser: PropTypes.func.isRequired,
 }
 
 const NetworkEmpty = () => (
@@ -606,6 +616,7 @@ NetworkStream.displayName = 'NetworkStream'
 NetworkStream.propTypes = {
   nodes: PropTypes.arrayOf(CygraphNode),
   edges: PropTypes.arrayOf(CygraphEdge),
+  usersById: PropTypes.objectOf(MProps.User),
 
   // These props come as raw inputs, so they are strings instead of numbers.
   settings: PropTypes.shape({
@@ -616,6 +627,7 @@ NetworkStream.propTypes = {
 
   // Stream that receives an event (the selected user) whenever a user is selected
   $selectUser: PropTypes.object.isRequired,
+  onSelectUser: PropTypes.func.isRequired,
 }
 
 const graphContainer = css(important({
@@ -633,6 +645,7 @@ const ConnectedNetworkStream = inject(stores => ({
 ConnectedNetworkStream.propTypes = {
   // Stream that receives an event (the selected user) whenever a user is selected
   $selectUser: PropTypes.object.isRequired,
+  onSelectUser: PropTypes.func.isRequired,
 }
 
 export default ConnectedNetworkStream
