@@ -24,7 +24,7 @@ import cola from 'cytoscape-cola'
 
 import { mergeInitialState, SERVER_URL } from '../config'
 import * as MProps from '../props'
-import { important} from '../utils'
+import { important, componentFromStream } from '../utils'
 
 import * as R from 'ramda'
 import * as Rx from 'rxjs'
@@ -34,11 +34,6 @@ import * as Recompose from 'recompose'
 import K from 'fast-keys'
 
 import NetworkVisualization from '../NetworkVisualization'
-
-const componentFromStream = Recompose.componentFromStreamWithConfig({
-  fromESObservable: Rx.from,
-  toESObservable: R.identity,
-})
 
 // Graph physics plugin
 cytoscape.use(cola)

@@ -6,7 +6,7 @@ import PropTypes from 'prop-types'
 import cytoscape from 'cytoscape'
 import cola from 'cytoscape-cola'
 
-import { important } from './utils'
+import { important, componentFromStream } from './utils'
 
 import * as R from 'ramda'
 import * as Rx from 'rxjs'
@@ -24,11 +24,6 @@ import CyTooltipStream, { SELECT, UNSELECT } from './CyTooltipStream'
 import { Div, Li, Span, Ul, B } from 'glamorous'
 import Popover from 'react-popover'
 import Typography from 'material-ui/Typography'
-
-const componentFromStream = Recompose.componentFromStreamWithConfig({
-  fromESObservable: Rx.from,
-  toESObservable: R.identity,
-})
 
 const SettingsProp = PropTypes.shape({
   maxEdgeWeight: PropTypes.number.isRequired,
