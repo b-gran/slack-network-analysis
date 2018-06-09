@@ -15,7 +15,6 @@ import * as operators from 'rxjs/operators'
 import { css } from 'glamor'
 
 import { inject } from 'mobx-react'
-import * as Recompose from 'recompose'
 import { hasDefinedProperties } from '../utils'
 import K from 'fast-keys'
 import { propagateLabels } from '../labelPropagation'

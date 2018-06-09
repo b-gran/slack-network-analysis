@@ -22,26 +22,22 @@ import { createMuiTheme } from 'material-ui/styles'
 
 import { Div, Span } from 'glamorous'
 
-import { observable, action } from 'mobx'
+import { action } from 'mobx'
 import { PropTypes as MobxPropTypes, observer, inject, Provider } from 'mobx-react'
 import * as R from 'ramda'
 
-import { mergeInitialState, SERVER_URL } from '../config'
+import { mobxHmrObservable, SERVER_URL } from '../config'
 import * as MProps from '../props'
 import { important } from '../utils'
 
 // Resets
 css.global('body', { margin: 0 })
 
-const initialState = observable({
+const state = mobxHmrObservable(module)({
   team: undefined,
   graphs: undefined,
   error: undefined,
 })
-
-const state = (module.hot && module.hot.data && module.hot.data.state) ?
-  mergeInitialState(initialState, module.hot.data.state) :
-  initialState
 
 const getTeam = action(teamId => axios.get(`${SERVER_URL}/teams/${teamId}`)
   .then(res => state.team = res.data)
@@ -280,11 +276,3 @@ export default () => (
     <WIndex />
   </Provider>
 )
-
-// Keep track of state between module reloads
-if (module.hot) {
-  module.hot.dispose(data => {
-    data.state = state
-    return data
-  })
-}

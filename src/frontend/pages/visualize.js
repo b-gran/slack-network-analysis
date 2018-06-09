@@ -16,13 +16,13 @@ import style from 'rc-slider/dist/rc-slider.css'
 import glamorous, { Div } from 'glamorous'
 import { css } from 'glamor'
 
-import { action, observable } from 'mobx'
+import { action } from 'mobx'
 import { inject, observer, Provider } from 'mobx-react'
 
 import cytoscape from 'cytoscape'
 import cola from 'cytoscape-cola'
 
-import { mergeInitialState, SERVER_URL } from '../config'
+import { mobxHmrObservable, SERVER_URL } from '../config'
 import * as MProps from '../props'
 import { important, componentFromStream } from '../utils'
 
@@ -46,7 +46,7 @@ css.global('.Popover-tipShape', {
   fill: '#FFFFFF'
 })
 
-const initialState = observable({
+const state = mobxHmrObservable(module)({
   error: undefined,
   graph: undefined,
   nodesById: undefined,
@@ -131,10 +131,6 @@ const initialState = observable({
     })
   },
 })
-
-const state = (module.hot && module.hot.data && module.hot.data.state) ?
-  mergeInitialState(initialState, module.hot.data.state) :
-  initialState
 
 const loadInitialData = action(graphId => axios.get(`${SERVER_URL}/graphs/${graphId}`)
   .then(res => {
@@ -514,11 +510,3 @@ export default () => (
     <Visualize />
   </Provider>
 )
-
-// Keep track of state between module reloads
-if (module.hot) {
-  module.hot.dispose(data => {
-    data.state = state
-    return data
-  })
-}

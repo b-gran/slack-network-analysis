@@ -20,3 +20,21 @@ export const mergeInitialState = (initialState, prevState) => {
     prevState
   ))
 }
+
+export function mobxHmrObservable (_module) {
+  return (...args) => {
+    const initialState = observable(...args)
+    const state = (_module.hot && _module.hot.data && _module.hot.data.state) ?
+      mergeInitialState(initialState, _module.hot.data.state) :
+      initialState
+
+    if (_module.hot) {
+      _module.hot.dispose(data => {
+        data.state = state
+        return data
+      })
+    }
+
+    return state
+  }
+}
