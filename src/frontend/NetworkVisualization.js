@@ -211,6 +211,11 @@ class Network extends React.Component {
         cyGraph.fit(user, minSpace / 2.1)
         user.select()
 
+        // Trigger a tap event to show the tooltip.
+        // Why not show the tooltip on select events? It's possible for the tooltip to be hidden
+        // by a viewport event like zoom, but the element will still be selected.
+        user.emit('tap')
+
         // Flash the selected user and reset the styles when the animation finishes
         const nodeBaseColor = `#${colorsByLabel.get(user.data('label'))}`
         animateElement(
