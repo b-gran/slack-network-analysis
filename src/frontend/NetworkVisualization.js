@@ -24,6 +24,7 @@ import CyTooltipStream, { SELECT, UNSELECT } from './CyTooltipStream'
 import { A, B, Div, Li, Ul } from 'glamorous'
 import Popover from 'react-popover'
 import Typography from 'material-ui/Typography'
+import ZoomOutMap from '@material-ui/icons/ZoomOutMap'
 
 const SettingsProp = PropTypes.shape({
   maxEdgeWeight: PropTypes.number.isRequired,
@@ -199,16 +200,9 @@ class Network extends React.Component {
         // Deselect anything that's currently selected
         cyGraph.nodes().unselect()
 
-        // Get the width of the container so we can zoom sensibly
-        const graphContainerSize = this.graphContainer.getBoundingClientRect()
-        const minSpace = Math.min(
-          graphContainerSize.width,
-          graphContainerSize.height
-        )
-
-        // Center & select the user
+        // Center the viewport around the user
         const user = cyGraph.nodes(`[userId='${selectedUser._id}']`)
-        cyGraph.fit(user, minSpace / 2.1)
+        cyGraph.center(user)
         user.select()
 
         // Trigger a tap event to show the tooltip.
@@ -250,6 +244,21 @@ class Network extends React.Component {
       })
 
     return [cyGraph, layout, subscription, CyTooltipStream(cyGraph)]
+  }
+
+  fitGraphToCollection (collection) {
+    if (!this.graphContainer || !this.graphVisualisation) {
+      return
+    }
+
+    // Get the width of the container so we can zoom sensibly
+    const graphContainerSize = this.graphContainer.getBoundingClientRect()
+    const minSpace = Math.min(
+      graphContainerSize.width,
+      graphContainerSize.height
+    )
+
+    this.graphVisualisation.fit(collection, minSpace / 2.1)
   }
 
   componentDidMount () {
@@ -315,12 +324,15 @@ class Network extends React.Component {
         className={graphContainer.toString()}
         ref={graphContainer => this.graphContainer = graphContainer}/>
 
-      <NetworkTooltip $tooltip={this.$tooltip} onSelectUser={selectUserById} />
+      <NetworkTooltip
+        $tooltip={this.$tooltip}
+        onSelectUser={selectUserById}
+        onFitCollection={collection => this.fitGraphToCollection(collection)} />
     </React.Fragment>
   }
 }
 
-const UserDataPopover = ({ node, onSelectUser }) => {
+const UserDataPopover = ({ node, onSelectUser, onFitCollection }) => {
   const name = node.data('name')
 
   const connections = node.neighborhood().edges().map(edge => {
@@ -348,8 +360,13 @@ const UserDataPopover = ({ node, onSelectUser }) => {
     <Div
       padding="10px" background="#FFF" borderRadius="4px"
       boxShadow="rgba(0, 0, 0, 0.1) 0px 4px 8px 4px, rgba(0, 0, 0, 0.5) 0px 1px 4px 0px">
-      <Div textAlign="center" paddingBottom="10px">
-        <Typography variant="headline">{name}</Typography>
+      <Div display="flex" alignItems="center" justifyContent="space-between" paddingBottom="10px">
+        <Typography variant="headline">
+          {name}
+        </Typography>
+        <Div cursor="pointer" lineHeight="0">
+          <ZoomOutMap onClick={() => onFitCollection(node)} />
+        </Div>
       </Div>
       <Div border="1px solid #aaa">
         <Div borderBottom="1px solid #aaa" padding="3px 6px">
@@ -396,6 +413,7 @@ UserDataPopover.displayName = 'UserDataPopover'
 UserDataPopover.propTypes = {
   node: PropTypes.object.isRequired,
   onSelectUser: PropTypes.func.isRequired,
+  onFitCollection: PropTypes.func.isRequired,
 }
 
 const NetworkDataField = ({ label, children }) => (
@@ -461,7 +479,7 @@ const NetworkTooltip = componentFromStream(
     )
 
     return Rx.combineLatest($content, $props).pipe(
-      operators.map(([[lastEvent, currentEvent], { onSelectUser }]) => {
+      operators.map(([[lastEvent, currentEvent], { onSelectUser, onFitCollection }]) => {
         const isEmptyEvent = R.pipe(
           R.path(['event', 'type']),
           R.anyPass([ R.isNil, R.equals(UNSELECT) ])
@@ -479,7 +497,10 @@ const NetworkTooltip = componentFromStream(
         const popover = <Popover
           isOpen={open}
           place="below"
-          body={<UserDataPopover node={node} onSelectUser={onSelectUser} />}>
+          body={<UserDataPopover
+            node={node}
+            onSelectUser={onSelectUser}
+            onFitCollection={onFitCollection} />}>
           {currentEvent.position}
         </Popover>
 
@@ -508,6 +529,8 @@ NetworkTooltip.propTypes = {
   $tooltip: PropTypes.object.isRequired,
 
   onSelectUser: PropTypes.func.isRequired,
+
+  onFitCollection: PropTypes.func.isRequired,
 }
 
 const NetworkEmpty = () => (
