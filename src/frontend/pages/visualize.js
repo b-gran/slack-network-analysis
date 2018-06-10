@@ -46,6 +46,17 @@ css.global('.Popover-tipShape', {
   fill: '#FFFFFF'
 })
 
+export const ColorMode = {
+  label: 'label',
+  degreeCentrality: 'degreeCentrality',
+  betweennessCentrality: 'betweennessCentrality',
+}
+
+export const SizeMode = {
+  degreeCentrality: 'degreeCentrality',
+  betweennessCentrality: 'betweennessCentrality',
+}
+
 const state = mobxHmrObservable(module)({
   error: undefined,
   graph: undefined,
@@ -57,6 +68,9 @@ const state = mobxHmrObservable(module)({
     maxEdgeWeight: String(0.6),
     edgeLength: String(2000),
     animation: true,
+
+    color: ColorMode.label,
+    size: SizeMode.degreeCentrality,
   },
 
   get nodes () {
