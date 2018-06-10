@@ -1,5 +1,6 @@
 import * as R from 'ramda'
-import { sample, range } from './utils'
+import { range, sample } from './utils'
+import getGradientFactory from './frontend/gradient'
 
 // Chooses a label for a source node based on the labelling of its neighbors.
 // labelsByNodeId is a Map whose keys have the same type as the ids of the nodes.
@@ -122,4 +123,71 @@ function headSet (set) {
 
 function sampleSet (set) {
   return sample(Array.from(set.values()))
+}
+
+// Given a node labeling, returns a mapping of label => color for the labels.
+export function getColorsForLabels (labelsByNodeId) {
+  const getColor = getGradientFactory()
+
+  const colorsByLabel = new Map()
+  const labelValues = Array.from(labelsByNodeId.values())
+  for (const i of range(labelValues.length)) {
+    const label = labelValues[i]
+    colorsByLabel.set(label, getColor(i))
+  }
+
+  return colorsByLabel
+}
+
+// Creates a function that returns a unique human-readable label each time is invoked.
+function getLabelGenerator () {
+  const sequence = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  const labelCount = sequence.length
+
+  let index = 0
+
+  return () => {
+    // Convert the index to a number whose base is the length of the sequence.
+    // Each digit will correspond to a position in the sequence
+    // This number is string format.
+    const sequencePositions = Array.from(index.toString(labelCount))
+    // Convert each character of the high-base number-string to a Number.
+      .map(char => parseInt(char, labelCount))
+
+    index = index + 1
+
+    // If there's only one digit, we just index directly into the sequence.
+    if (sequencePositions.length === 1) {
+      return sequence[sequencePositions[0]]
+    }
+
+    // Otherwise, we need to shift the first digit one position to the left in the sequence.
+    // For example, if the digits were 100, these positions would correspond directly to BAB.
+    // We actually want this label to be AAA - so we need to shift the first digit.
+    const [first, ...rest] = sequencePositions
+    return [
+      sequence[first - 1],
+      ...rest.map(n => sequence[n]),
+    ].join('')
+  }
+}
+
+// Given a node labeling, returns an equivalent labeling but whose labels are human-readable.
+export function getHumanReadableLabels (labelsByNodeId) {
+  const getLabel = getLabelGenerator()
+  const uniqueLabels = new Set(labelsByNodeId.values())
+
+  // Generate a human label for each unique original label
+  const humanReadableLabelsByOriginalLabel = new Map()
+  for (const label of uniqueLabels) {
+    humanReadableLabelsByOriginalLabel.set(label, getLabel())
+  }
+
+  // Convert the original labels to the new format
+  const humanReadableLabelsByNodeId = new Map()
+  for (const [nodeId, label] of labelsByNodeId) {
+    humanReadableLabelsByNodeId.set(nodeId, humanReadableLabelsByOriginalLabel.get(label))
+  }
+
+  return humanReadableLabelsByNodeId
 }
