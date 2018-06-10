@@ -1,5 +1,5 @@
 import * as R from 'ramda'
-import { sample } from './utils'
+import { sample, range } from './utils'
 
 // Chooses a label for a source node based on the labelling of its neighbors.
 // labelsByNodeId is a Map whose keys have the same type as the ids of the nodes.
@@ -28,7 +28,7 @@ export function pickLabel (labelsByNodeId, sourceNode, neighbors) {
   const entries = Array.from(scores.entries())
   const maxEntries = new Set([ entries[0] ])
 
-  for (let i = 1; i < entries.length; i++) {
+  for (const i of range(1, entries.length)) {
     const currentMax = headSet(maxEntries)[1]
     const entry = entries[i]
     const [,score] = entry
@@ -68,7 +68,7 @@ export function propagateLabels (graph, { iterations = 10 } = {}) {
   let labelsByNodeId = getInitialLabeling(graph)
   const initialLabelCount = labelsByNodeId.size
 
-  for (let i = 0; i < iterations; i++) {
+  for (const i of range(iterations)) {
     labelsByNodeId = propagateLabelsStep(labelsByNodeId, graph)
 
     // If we didn't propagate any labels, we're done
@@ -97,8 +97,9 @@ export function* getShuffledNodeIterator (nodeCollection) {
   }
 }
 
+// In-place Fisher-Yates shuffle
 function shuffleArrayInPlace (array) {
-  for (let i = 0; i < array.length; i++) {
+  for (const i of range(array.length)) {
     const shuffledIndex = randomInt(i, array.length)
 
     const initialValue = array[i]

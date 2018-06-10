@@ -1,7 +1,7 @@
 import * as R from 'ramda'
 import cytoscape from 'cytoscape'
 
-import { mapFromObject, isIterable } from './utils'
+import { mapFromObject, isIterable, range } from './utils'
 import * as LPA from './labelPropagation'
 
 describe('propagateLabels', () => {
@@ -82,7 +82,7 @@ describe('propagateLabels', () => {
     })
 
     const iterations = 400
-    for (let i = 0; i < iterations; i++) {
+    for (const i of range(iterations)) {
       const labelsByNodeId = LPA.propagateLabels(graph)
 
       const labels = Array.from(labelsByNodeId.values())
