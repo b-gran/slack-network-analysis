@@ -7,6 +7,7 @@ import cytoscape from 'cytoscape'
 import cola from 'cytoscape-cola'
 
 import { important, componentFromStream } from './utils'
+import getGradientFactory from './gradient'
 
 import * as R from 'ramda'
 import * as Rx from 'rxjs'
@@ -15,7 +16,7 @@ import * as operators from 'rxjs/operators'
 import { css } from 'glamor'
 
 import { inject } from 'mobx-react'
-import { hasDefinedProperties } from '../utils'
+import { hasDefinedProperties, range } from '../utils'
 import K from 'fast-keys'
 import { propagateLabels } from '../labelPropagation'
 import * as MProps from './props'
@@ -31,26 +32,12 @@ const SettingsProp = PropTypes.shape({
   animation: PropTypes.bool,
 })
 
-function toHex (n) {
-  const string = n.toString(16)
-  return Array(6 - string.length).fill('0').join('') + string
-}
-
-function gradient (x) {
-  return (0xFFFFFF * x) | 0
-}
-
-function getGradientGenerator () {
-  const offset = Math.random()
-  return i => toHex(gradient(( (offset + (0.618033988749895 * i)) % 1)))
-}
-
 function getColorsForLabels (labelsByNodeId) {
-  const getColor = getGradientGenerator()
+  const getColor = getGradientFactory()
 
   const colorsByLabel = new Map()
   const labelValues = Array.from(labelsByNodeId.values())
-  for (let i = 0; i < labelValues.length; i++) {
+  for (const i of range(labelValues.length)) {
     const label = labelValues[i]
     colorsByLabel.set(label, getColor(i))
   }
