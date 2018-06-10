@@ -1,6 +1,6 @@
 import * as R from 'ramda'
 import assert from 'assert'
-import { booleanFromString, hasDefinedProperties } from './utils'
+import { booleanFromString, hasDefinedProperties, isIterable, range } from './utils'
 
 describe('hasDefinedProperties', () => {
   it('returns false if the object is missing any props', () => {
@@ -41,6 +41,43 @@ describe('booleanFromString', () => {
       allCapitalizations(String(boolean))
         .forEach(permutation => expect(booleanFromString(permutation)).toBe(boolean))
     )
+  })
+})
+
+describe('isIterable', () => {
+  it('returns true for Iterable things', () => {
+    function* getIterable () {
+      yield 'ok'
+    }
+
+    expect(isIterable('foo')).toBe(true)
+    expect(isIterable([])).toBe(true)
+    expect(isIterable(getIterable())).toBe(true)
+  })
+
+  it('returns false for non-Iterable things', () => {
+    class NotIterable {}
+
+    expect(isIterable(null)).toBe(false)
+    expect(isIterable(5)).toBe(false)
+    expect(isIterable(new NotIterable())).toBe(false)
+  })
+})
+
+describe('range', () => {
+  it(`returns an Iterator`, () => {
+    expect(isIterable(range(1))).toBe(true)
+    expect(isIterable(range(1, 2))).toBe(true)
+  })
+
+  it(`starts from 0 when end isn't provided`, () => {
+    const yieldedValues = Array.from(range(5))
+    expect(yieldedValues).toEqual([0, 1, 2, 3, 4])
+  })
+
+  it('contains the values from start up-to-but-not-including end', () => {
+    const yieldedValues = Array.from(range(2, 5))
+    expect(yieldedValues).toEqual([2, 3, 4])
   })
 })
 

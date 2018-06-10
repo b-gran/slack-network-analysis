@@ -29,3 +29,16 @@ module.exports.isIterable = maybeIterable => (
   !R.isNil(maybeIterable) &&
   typeof maybeIterable[Symbol.iterator] === 'function'
 )
+
+// Iterator over the numbers [start, end) (i.e. up to, but not including, end).
+// Has the same semantics as Python's range().
+module.exports.range = function* (_start, _end) {
+  const isSingleArgument = R.isNil(_end)
+
+  const start = isSingleArgument ? 0 : _start
+  const end = isSingleArgument ? _start : _end
+
+  for (let i = start; i < end; i++) {
+    yield i
+  }
+}
