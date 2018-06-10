@@ -199,9 +199,16 @@ class Network extends React.Component {
         // Deselect anything that's currently selected
         cyGraph.nodes().unselect()
 
+        // Get the width of the container so we can zoom sensibly
+        const graphContainerSize = this.graphContainer.getBoundingClientRect()
+        const minSpace = Math.min(
+          graphContainerSize.width,
+          graphContainerSize.height
+        )
+
         // Center & select the user
         const user = cyGraph.nodes(`[userId='${selectedUser._id}']`)
-        cyGraph.center(user)
+        cyGraph.fit(user, minSpace / 2.1)
         user.select()
 
         // Flash the selected user and reset the styles when the animation finishes
