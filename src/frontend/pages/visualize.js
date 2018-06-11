@@ -73,6 +73,8 @@ const state = mobxHmrObservable(module)({
     size: SizeMode.degreeCentrality,
   },
 
+  $selectUser: new Rx.Subject(),
+
   get nodes () {
     if (!this.nodesById || !this.usersById) {
       return undefined
@@ -167,16 +169,6 @@ const updateSettings = action(partialSettingsUpdate =>
 class Visualize extends React.Component {
   static displayName = 'Visualize'
 
-  constructor (props) {
-    super(props)
-
-    const { handler, stream } = Recompose.createEventHandler()
-    this.state = {
-      selectUserHandler: handler,
-      selectUserStream: Rx.from(stream),
-    }
-  }
-
   componentDidMount () {
     return loadInitialData(Router.query.graph)
   }
@@ -189,11 +181,8 @@ class Visualize extends React.Component {
         </Head>
         <Div display="flex" flexDirection="row" justifyContent="center" alignItems="center"
              height="100vh" position="relative">
-          <NetworkVisualization
-            $selectUser={this.state.selectUserStream}
-            onSelectUser={this.state.selectUserHandler} />
-
-          <Sidebar onSelectUser={this.state.selectUserHandler} />
+          <NetworkVisualization />
+          <Sidebar />
         </Div>
       </React.Fragment>
     )
@@ -206,6 +195,7 @@ const Sidebar = R.pipe(
     usersById: stores.state.usersById,
     visibleUsers: stores.state.visibleUsers,
     settings: stores.state.settings,
+    onSelectUser: user => stores.state.$selectUser.next(user),
   })),
 )(componentFromStream(
   $props => {
@@ -238,9 +228,6 @@ const Sidebar = R.pipe(
   }
 ))
 Sidebar.displayName = 'Sidebar'
-Sidebar.propTypes = {
-  onSelectUser: PropTypes.func.isRequired,
-}
 
 const SidebarLabel = ({ children }) => (
   <Typography classes={{ root: sidebarLabel.toString() }}>

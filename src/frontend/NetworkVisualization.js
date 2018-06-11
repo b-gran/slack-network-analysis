@@ -68,7 +68,6 @@ class Network extends React.Component {
     settings: SettingsProp.isRequired,
 
     $selectUser: PropTypes.object.isRequired,
-    onSelectUser: PropTypes.func.isRequired,
   }
 
   static settingsRenderWhitelist = new Set([ 'animation' ])
@@ -318,7 +317,6 @@ class Network extends React.Component {
   }
 
   render () {
-    const selectUserById = userId => this.props.onSelectUser(this.props.usersById[userId])
     return <React.Fragment>
       <div
         className={graphContainer.toString()}
@@ -326,13 +324,12 @@ class Network extends React.Component {
 
       <NetworkTooltip
         $tooltip={this.$tooltip}
-        onSelectUser={selectUserById}
         onFitCollection={collection => this.fitGraphToCollection(collection)} />
     </React.Fragment>
   }
 }
 
-const UserDataPopover = ({ node, onSelectUser, onFitCollection }) => {
+const PUserDataPopover = ({ node, onSelectUser, onFitCollection }) => {
   const name = node.data('name')
 
   const connections = node.neighborhood().edges().map(edge => {
@@ -409,10 +406,22 @@ const UserDataPopover = ({ node, onSelectUser, onFitCollection }) => {
     </Div>
   )
 }
+PUserDataPopover.displayName = 'PUserDataPopover'
+PUserDataPopover.propTypes = {
+  node: PropTypes.object.isRequired,
+  onSelectUser: PropTypes.func.isRequired,
+  onFitCollection: PropTypes.func.isRequired,
+}
+
+const UserDataPopover = inject(stores => {
+  const { usersById, $selectUser } = stores.state
+  return {
+    onSelectUser: userId => $selectUser.next(usersById[userId])
+  }
+})(PUserDataPopover)
 UserDataPopover.displayName = 'UserDataPopover'
 UserDataPopover.propTypes = {
   node: PropTypes.object.isRequired,
-  onSelectUser: PropTypes.func.isRequired,
   onFitCollection: PropTypes.func.isRequired,
 }
 
@@ -479,7 +488,7 @@ const NetworkTooltip = componentFromStream(
     )
 
     return Rx.combineLatest($content, $props).pipe(
-      operators.map(([[lastEvent, currentEvent], { onSelectUser, onFitCollection }]) => {
+      operators.map(([[lastEvent, currentEvent], { onFitCollection }]) => {
         const isEmptyEvent = R.pipe(
           R.path(['event', 'type']),
           R.anyPass([ R.isNil, R.equals(UNSELECT) ])
@@ -497,10 +506,7 @@ const NetworkTooltip = componentFromStream(
         const popover = <Popover
           isOpen={open}
           place="below"
-          body={<UserDataPopover
-            node={node}
-            onSelectUser={onSelectUser}
-            onFitCollection={onFitCollection} />}>
+          body={<UserDataPopover node={node} onFitCollection={onFitCollection} />}>
           {currentEvent.position}
         </Popover>
 
@@ -527,9 +533,6 @@ const NetworkTooltip = componentFromStream(
 NetworkTooltip.propTypes = {
   // Stream of tooltip events from a CyTooltipStream
   $tooltip: PropTypes.object.isRequired,
-
-  onSelectUser: PropTypes.func.isRequired,
-
   onFitCollection: PropTypes.func.isRequired,
 }
 
@@ -585,7 +588,6 @@ NetworkStream.propTypes = {
 
   // Stream that receives an event (the selected user) whenever a user is selected
   $selectUser: PropTypes.object.isRequired,
-  onSelectUser: PropTypes.func.isRequired,
 }
 
 const graphContainer = css(important({
@@ -600,11 +602,7 @@ const ConnectedNetworkStream = inject(stores => ({
   nodes: stores.state.nodes,
   edges: stores.state.edges,
 }))(NetworkStream)
-ConnectedNetworkStream.propTypes = {
-  // Stream that receives an event (the selected user) whenever a user is selected
-  $selectUser: PropTypes.object.isRequired,
-  onSelectUser: PropTypes.func.isRequired,
-}
+ConnectedNetworkStream.displayName = 'ConnectedNetworkStream'
 
 export default ConnectedNetworkStream
 
