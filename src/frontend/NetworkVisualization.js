@@ -70,7 +70,7 @@ class Network extends React.Component {
     $selectUser: PropTypes.object.isRequired,
   }
 
-  static settingsRenderWhitelist = new Set([ 'animation' ])
+  static settingsRenderWhitelist = new Set([ 'animation', 'mode' ])
 
   graphContainer = null
   graphVisualisation = null

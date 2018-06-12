@@ -12,6 +12,8 @@ import Switch from 'material-ui/Switch'
 import Popover from 'react-popover'
 import Slider from 'rc-slider'
 import style from 'rc-slider/dist/rc-slider.css'
+import Select from 'material-ui/Select'
+import { MenuItem } from 'material-ui/Menu'
 
 import glamorous, { Div } from 'glamorous'
 import { css } from 'glamor'
@@ -57,6 +59,14 @@ export const SizeMode = {
   betweennessCentrality: 'betweennessCentrality',
 }
 
+export const ViewMode = {
+  label: 'label',
+  periphery: 'periphery',
+  center: 'center',
+}
+
+export const ViewModePropType = PropTypes.oneOf(Object.keys(ViewMode))
+
 const state = mobxHmrObservable(module)({
   error: undefined,
   graph: undefined,
@@ -68,6 +78,8 @@ const state = mobxHmrObservable(module)({
     maxEdgeWeight: String(0.6),
     edgeLength: String(2000),
     animation: true,
+
+    mode: ViewMode.label,
 
     color: ColorMode.label,
     size: SizeMode.degreeCentrality,
@@ -262,6 +274,7 @@ class PSidebar extends React.Component {
       maxEdgeWeight: PropTypes.string.isRequired,
       edgeLength: PropTypes.string.isRequired,
       animation: PropTypes.bool,
+      mode: ViewModePropType.isRequired,
     }).isRequired,
   }
 
@@ -329,6 +342,19 @@ class PSidebar extends React.Component {
             onChangeUserSearchTerm={this.props.onChangeUserSearchTerm}
             matchingUsers={this.props.matchingUsers}
             userSearchTerm={this.props.userSearchTerm} />
+        </Div>
+
+        <Div marginTop="15px">
+          <SidebarLabel>Mode</SidebarLabel>
+          <Div background="#ffffff" padding="10px" borderRadius="4px" display="inline">
+            <Select
+              value={this.props.settings.mode}
+              onChange={evt => updateSettings({ mode: evt.target.value })}>
+              <MenuItem value={ViewMode.label}>Label</MenuItem>
+              <MenuItem value={ViewMode.center}>Center</MenuItem>
+              <MenuItem value={ViewMode.periphery}>Periphery</MenuItem>
+            </Select>
+          </Div>
         </Div>
       </Div>
     )
