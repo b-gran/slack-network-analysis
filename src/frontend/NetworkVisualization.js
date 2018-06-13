@@ -19,6 +19,7 @@ import { hasDefinedProperties } from '../utils'
 import K from 'fast-keys'
 import { getColorsForLabels, getHumanReadableLabels, propagateLabels } from '../labelPropagation'
 import * as MProps from './props'
+import { ViewModePropType } from './NetworkSettings'
 
 import CyTooltipStream, { SELECT, UNSELECT } from './CyTooltipStream'
 import { A, B, Div, Li, Ul } from 'glamorous'
@@ -26,17 +27,15 @@ import Popover from 'react-popover'
 import Typography from 'material-ui/Typography'
 import ZoomOutMap from '@material-ui/icons/ZoomOutMap'
 
+import { NodePrimaryColor, NodeSecondaryColor } from './NetworkColoring'
+import GraphColorerByMode from './NetworkColoring'
+
 const SettingsProp = PropTypes.shape({
   maxEdgeWeight: PropTypes.number.isRequired,
   edgeLength: PropTypes.number.isRequired,
   animation: PropTypes.bool,
+  mode: ViewModePropType.isRequired,
 })
-
-// Given a map of nodeId -> label, returns a new map with the same node=>label mappings, but with
-// human readable names for the labels (instead of whatever labels are in use).
-
-const NodePrimaryColor = '#f50057'
-const NodeSecondaryColor = '#999999'
 
 const CygraphNode = PropTypes.shape({
   group: PropTypes.oneOf(['nodes']).isRequired,
@@ -70,7 +69,7 @@ class Network extends React.Component {
     $selectUser: PropTypes.object.isRequired,
   }
 
-  static settingsRenderWhitelist = new Set([ 'animation', 'mode' ])
+  static settingsRenderWhitelist = new Set([ 'animation' ])
 
   graphContainer = null
   graphVisualisation = null
@@ -130,45 +129,18 @@ class Network extends React.Component {
 
     // NEIGHBORHOOD DETECTION
 
-    // Generate labels and colors
+    // Assign labels (neighborhoods) to nodes
     const labels = getHumanReadableLabels(propagateLabels(cyGraph))
-    const colorsByLabel = getColorsForLabels(labels)
-
-    // Generate selectors for each label
-    const selectors = Array.from(colorsByLabel.entries()).map(([label, color]) => ({
-      selector: `node[label = "${label}"]`,
-      style: {
-        'background-color': `#${color}`,
-      },
-    }))
-
-    // Assign labels
     cyGraph.nodes().forEach(node => {
       const label = labels.get(node.id())
       node.data('label', label)
     })
 
-    // Apply generated style with label selectors
-    cyGraph.style([
-      {
-        selector: 'node',
-        style: {
-          "width": "mapData(score, 0, 1, 60, 180)",
-          "height": "mapData(score, 0, 1, 60, 180)",
-          content: node => node.data('name'),
-          'font-size': '20px',
-          'text-background-color': '#fff',
-          'text-background-opacity': '0.5',
-        },
-      },
-      ...selectors,
-      {
-        selector: 'node:selected',
-        style: {
-          'background-color': NodePrimaryColor,
-        },
-      },
-    ])
+    // Apply coloring based on the current mode
+    GraphColorerByMode[this.props.settings.mode]({
+      labels: labels,
+      cy: cyGraph,
+    })
 
     // Start the visualization and physics sim
     const layout = cyGraph.layout(layoutParams)
@@ -199,8 +171,10 @@ class Network extends React.Component {
         // Deselect anything that's currently selected
         cyGraph.nodes().unselect()
 
-        // Center the viewport around the user
         const user = cyGraph.nodes(`[userId='${selectedUser._id}']`)
+        const nodeBaseColor = user.style('background-color')
+
+        // Center the viewport around the user
         cyGraph.center(user)
         user.select()
 
@@ -210,7 +184,6 @@ class Network extends React.Component {
         user.emit('tap')
 
         // Flash the selected user and reset the styles when the animation finishes
-        const nodeBaseColor = `#${colorsByLabel.get(user.data('label'))}`
         animateElement(
           user,
           [

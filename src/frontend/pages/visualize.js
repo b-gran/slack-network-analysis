@@ -27,6 +27,7 @@ import cola from 'cytoscape-cola'
 import { mobxHmrObservable, SERVER_URL } from '../config'
 import * as MProps from '../props'
 import { important, componentFromStream } from '../utils'
+import { ColorMode, SizeMode, ViewMode, ViewModePropType } from '../NetworkSettings'
 
 import * as R from 'ramda'
 import * as Rx from 'rxjs'
@@ -47,25 +48,6 @@ css.global('body', { margin: 0 })
 css.global('.Popover-tipShape', {
   fill: '#FFFFFF'
 })
-
-export const ColorMode = {
-  label: 'label',
-  degreeCentrality: 'degreeCentrality',
-  betweennessCentrality: 'betweennessCentrality',
-}
-
-export const SizeMode = {
-  degreeCentrality: 'degreeCentrality',
-  betweennessCentrality: 'betweennessCentrality',
-}
-
-export const ViewMode = {
-  label: 'label',
-  periphery: 'periphery',
-  center: 'center',
-}
-
-export const ViewModePropType = PropTypes.oneOf(Object.keys(ViewMode))
 
 const state = mobxHmrObservable(module)({
   error: undefined,
