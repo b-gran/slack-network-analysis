@@ -109,7 +109,6 @@ const peripheryGradient = lerpRangeFactory([
 
 // Mapping of mode => function for applying graph coloring
 const GraphColorerByMode = {
-  // Actual coloring for label mode
   [ViewMode.label]: ({ labels, cy }) => {
     const colorsByLabel = getColorsForLabels(labels)
 
@@ -144,71 +143,47 @@ const GraphColorerByMode = {
     ])
   },
 
-  // TODO: replace with actual "periphery" coloring
-  // Currently using label coloring
   [ViewMode.periphery]: ({ labels, cy }) => {
     // We need to compute this during render because it's extremely expensive, so we can't batch
     // them all up during graph initialization.
-    // TODO: memoize
     const getClosenessCentrality = cy.$().ccn({
       weight: edge => edge.data('weight'),
     }).closeness
 
-    const closenessByNode = new Map(R.zip(
-      cy.nodes(),
-      cy.nodes().map(getClosenessCentrality)
-    ))
-    
-    const toIndexPercentile = array => array.map((_, index) => index / array.length)
+    const closenessPercentileByNode = percentileByNodeForIteratee(
+      getClosenessCentrality
+    )(cy.nodes())
 
-    const nodesOrderedByCloseness = R.sort(
-      (a, b) => closenessByNode.get(a) - closenessByNode.get(b),
-      cy.nodes()
-    )
-    const nodesByClosenessPercentile = new Map(R.zip(
-      nodesOrderedByCloseness,
-      toIndexPercentile(nodesOrderedByCloseness)
-    ))
-
-    const nodesOrderedByDegree = R.sort(
-      (a, b) => a.data('normalizedDegreeCentrality') - b.data('normalizedDegreeCentrality'),
-      cy.nodes()
-    )
-    const nodesByDegreePercentile = new Map(R.zip(
-      nodesOrderedByDegree,
-      toIndexPercentile(nodesOrderedByDegree)
-    ))
+    const degreePercentileByNode = percentileByNodeForIteratee(
+      node => node.data('normalizedDegreeCentrality')
+    )(cy.nodes())
 
     const getColorWeight = node => (
-      0.5 * nodesByClosenessPercentile.get(node) +
-      0.5 * nodesByDegreePercentile.get(node)
+      0.5 * closenessPercentileByNode.get(node) +
+      0.5 * degreePercentileByNode.get(node)
     )
 
-    const nodesOrderedByColorWeight = R.sort(
-      (a, b) => getColorWeight(b) - getColorWeight(a),
-      cy.nodes()
-    )
-    const colorWeightByNode = new Map(R.zip(
-      nodesOrderedByColorWeight,
-      toIndexPercentile(nodesOrderedByColorWeight)
-    ))
+    const colorWeightPercentileByNode = percentileByNodeForIteratee(
+      getColorWeight,
+      R.flip(R.subtract)
+    )(cy.nodes())
 
     cy.nodes().forEach(node => {
       node.data(
         'colorScore',
-        colorWeightByNode.get(node)
+        colorWeightPercentileByNode.get(node)
       )
     })
 
-    const nodeBaseSize = 100
-
     // Apply generated style with label selectors
+    const nodeBaseSize = 100
     cy.style([
       {
         selector: 'node',
         style: {
           "width": `mapData(score, 0, 1, ${nodeBaseSize}, ${3 * nodeBaseSize})`,
           "height": `mapData(score, 0, 1, ${nodeBaseSize}, ${3 * nodeBaseSize})`,
+          // TODO: generate unique selectors for each node so we don't need a style function.
           'background-color': element => peripheryGradient(element.data('colorScore')).toCSSHex(),
           content: node => node.data('name'),
           'font-size': '20px',
@@ -264,3 +239,28 @@ const GraphColorerByMode = {
 
 export default GraphColorerByMode
 
+// Given a function f :: Node -> Float[0, 1], returns a map of node to the
+// node's percentile for the function f. (i.e. a Map<Node, Float[0,1]).
+const percentileByNodeForIteratee = (f, comparator = R.subtract) => nodes => {
+  const valueByNode = new Map(R.zip(
+    nodes,
+    nodes.map(f)
+  ))
+
+  const orderedByValue = R.sort(
+    (a, b) => comparator(valueByNode.get(a), valueByNode.get(b)),
+    nodes
+  )
+
+  return new Map(R.zip(
+    orderedByValue,
+    toIndexPercentile(orderedByValue)
+  ))
+}
+
+
+// Returns a new array where the value at each index is the percentile of that index
+// (i.e. the index divided by the length of the array).
+function toIndexPercentile (array) {
+  return array.map((_, index) => index / array.length)
+}
