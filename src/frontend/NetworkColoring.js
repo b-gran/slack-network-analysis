@@ -1,4 +1,6 @@
 import * as R from 'ramda'
+import assert from 'assert'
+import { range } from '../utils'
 
 import { ViewMode } from './NetworkSettings'
 import { getColorsForLabels } from '../labelPropagation'
@@ -35,60 +37,58 @@ function channelToCSS (_value) {
     : string
 }
 
-function lerp (from, to, t) {
+function lerpColors (from, to, t) {
   return new Color(
-    lerpValue(from.r, to.r, t),
-    lerpValue(from.g, to.g, t),
-    lerpValue(from.b, to.b, t)
+    lerp(from.r, to.r, t),
+    lerp(from.g, to.g, t),
+    lerp(from.b, to.b, t)
   )
 }
 
-function lerpValue (from, to, t) {
+function lerp (from, to, t) {
   return from + (to - from) * t
 }
 
-function lerpRangeFactory (points) {
-  if (points.length === 0) {
-    throw new Error('invalid LERP range')
-  }
+function multiPointGradientFactory (points) {
+  assert(
+    !R.isEmpty(points) &&
+    R.last(points)[0] <= 1
+  )
+  const head = R.head(points)
+  const last = R.last(points)
 
-  if (points[points.length - 1][0] > 1) {
-    throw new Error('invalid LERP range')
-  }
-
-  let last = 0
+  let lastPoint = 0
   for (const [t] of points) {
-    if (t < last) {
-      throw new Error('invalid LERP range')
-    }
-    last = t
+    assert(t >= lastPoint)
+    lastPoint = t
   }
 
-  points = points.slice()
-  if (points[0][0] > 0) {
-    points.splice(0, 0, [0, points[0][1]])
+  // The first point must start from 0, and the last end at 1.
+  const normalizedPoints = points.slice()
+  if (head[0] > 0) {
+    normalizedPoints.splice(0, 0, [0, head[1]])
   }
-
-  if (points[points.length - 1][0] < 1) {
-    points.push([1, points[points.length - 1][1]])
+  if (last[0] < 1) {
+    normalizedPoints.push([1, last[1]])
   }
 
   return t => {
-    let start = points[0]
-    let end = points[0]
+    let startOfRange = normalizedPoints[0]
+    let endOfRange = normalizedPoints[0]
 
-    for (let i = 1; i < points.length; i++) {
-      if (end[0] >= t) {
+    // Shift the gradient range forward by one point until t is within the interval.
+    for (const i of range(1, normalizedPoints.length)) {
+      if (endOfRange[0] >= t) {
         continue
       }
-      start = end
-      end = points[i]
+      startOfRange = endOfRange
+      endOfRange = normalizedPoints[i]
     }
 
-    const position = (t - start[0]) / ((end[0] - start[0]) || 1)
-    return lerp(
-      start[1],
-      end[1],
+    const position = (t - startOfRange[0]) / ((endOfRange[0] - startOfRange[0]) || 1)
+    return lerpColors(
+      startOfRange[1],
+      endOfRange[1],
       position
     )
   }
@@ -101,7 +101,7 @@ const PeripheryGradientStart = '#96eaff'
 const PeripheryGradient80 = '#ffe196'
 const PeripheryGradientEnd = '#ffa45f'
 
-const peripheryGradient = lerpRangeFactory([
+const peripheryGradient = multiPointGradientFactory([
   [0, Color.fromCSSHex(PeripheryGradientStart)],
   [0.8, Color.fromCSSHex(PeripheryGradient80)],
   [1, Color.fromCSSHex(PeripheryGradientEnd)],
