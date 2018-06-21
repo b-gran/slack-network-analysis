@@ -200,33 +200,55 @@ const GraphColorerByMode = {
     ])
   },
 
-  // TODO: replace with actual "center" coloring
-  // Currently using label coloring
+  // Just like periphery coloring, but reverse the percentiles
   [ViewMode.center]: ({ labels, cy }) => {
-    const colorsByLabel = getColorsForLabels(labels)
+    // We need to compute this during render because it's extremely expensive, so we can't batch
+    // them all up during graph initialization.
+    const getClosenessCentrality = cy.$().ccn({
+      weight: edge => edge.data('weight'),
+    }).closeness
 
-    // Generate selectors for each label
-    const selectors = Array.from(colorsByLabel.entries()).map(([label, color]) => ({
-      selector: `node[label = "${label}"]`,
-      style: {
-        'background-color': `#${color}`,
-      },
-    }))
+    const closenessPercentileByNode = percentileByNodeForIteratee(
+      getClosenessCentrality
+    )(cy.nodes())
+
+    const degreePercentileByNode = percentileByNodeForIteratee(
+      node => node.data('normalizedDegreeCentrality')
+    )(cy.nodes())
+
+    const getColorWeight = node => (
+      0.5 * closenessPercentileByNode.get(node) +
+      0.5 * degreePercentileByNode.get(node)
+    )
+
+    const colorWeightPercentileByNode = percentileByNodeForIteratee(
+      getColorWeight,
+      R.subtract
+    )(cy.nodes())
+
+    cy.nodes().forEach(node => {
+      node.data(
+        'colorScore',
+        colorWeightPercentileByNode.get(node)
+      )
+    })
 
     // Apply generated style with label selectors
+    const nodeBaseSize = 100
     cy.style([
       {
         selector: 'node',
         style: {
-          "width": "mapData(score, 0, 1, 60, 180)",
-          "height": "mapData(score, 0, 1, 60, 180)",
+          "width": `mapData(score, 0, 1, ${nodeBaseSize}, ${3 * nodeBaseSize})`,
+          "height": `mapData(score, 0, 1, ${nodeBaseSize}, ${3 * nodeBaseSize})`,
+          // TODO: generate unique selectors for each node so we don't need a style function.
+          'background-color': element => peripheryGradient(element.data('colorScore')).toCSSHex(),
           content: node => node.data('name'),
           'font-size': '20px',
           'text-background-color': '#fff',
           'text-background-opacity': '0.5',
         },
       },
-      ...selectors,
       {
         selector: 'node:selected',
         style: {
