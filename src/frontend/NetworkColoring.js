@@ -97,7 +97,7 @@ function multiPointGradientFactory (points) {
 export const NodePrimaryColor = '#f50057'
 export const NodeSecondaryColor = '#999999'
 
-const PeripheryGradientStart = '#96eaff'
+const PeripheryGradientStart = '#e5ffe3'
 const PeripheryGradient80 = '#ffe196'
 const PeripheryGradientEnd = '#ffa45f'
 
