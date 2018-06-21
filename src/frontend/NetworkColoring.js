@@ -143,123 +143,82 @@ const GraphColorerByMode = {
     ])
   },
 
-  [ViewMode.periphery]: ({ labels, cy }) => {
-    // We need to compute this during render because it's extremely expensive, so we can't batch
-    // them all up during graph initialization.
-    const getClosenessCentrality = cy.$().ccn({
-      weight: edge => edge.data('weight'),
-    }).closeness
+  // Descending
+  [ViewMode.periphery]: getCentralityColoring(R.flip(R.subtract)),
 
-    const closenessPercentileByNode = percentileByNodeForIteratee(
-      getClosenessCentrality
-    )(cy.nodes())
-
-    const degreePercentileByNode = percentileByNodeForIteratee(
-      node => node.data('normalizedDegreeCentrality')
-    )(cy.nodes())
-
-    const getColorWeight = node => (
-      0.5 * closenessPercentileByNode.get(node) +
-      0.5 * degreePercentileByNode.get(node)
-    )
-
-    const colorWeightPercentileByNode = percentileByNodeForIteratee(
-      getColorWeight,
-      R.flip(R.subtract)
-    )(cy.nodes())
-
-    cy.nodes().forEach(node => {
-      node.data(
-        'colorScore',
-        colorWeightPercentileByNode.get(node)
-      )
-    })
-
-    // Apply generated style with label selectors
-    const nodeBaseSize = 100
-    cy.style([
-      {
-        selector: 'node',
-        style: {
-          "width": `mapData(score, 0, 1, ${nodeBaseSize}, ${3 * nodeBaseSize})`,
-          "height": `mapData(score, 0, 1, ${nodeBaseSize}, ${3 * nodeBaseSize})`,
-          // TODO: generate unique selectors for each node so we don't need a style function.
-          'background-color': element => peripheryGradient(element.data('colorScore')).toCSSHex(),
-          content: node => node.data('name'),
-          'font-size': '20px',
-          'text-background-color': '#fff',
-          'text-background-opacity': '0.5',
-        },
-      },
-      {
-        selector: 'node:selected',
-        style: {
-          'background-color': NodePrimaryColor,
-        },
-      },
-    ])
-  },
-
-  // Just like periphery coloring, but reverse the percentiles
-  [ViewMode.center]: ({ labels, cy }) => {
-    // We need to compute this during render because it's extremely expensive, so we can't batch
-    // them all up during graph initialization.
-    const getClosenessCentrality = cy.$().ccn({
-      weight: edge => edge.data('weight'),
-    }).closeness
-
-    const closenessPercentileByNode = percentileByNodeForIteratee(
-      getClosenessCentrality
-    )(cy.nodes())
-
-    const degreePercentileByNode = percentileByNodeForIteratee(
-      node => node.data('normalizedDegreeCentrality')
-    )(cy.nodes())
-
-    const getColorWeight = node => (
-      0.5 * closenessPercentileByNode.get(node) +
-      0.5 * degreePercentileByNode.get(node)
-    )
-
-    const colorWeightPercentileByNode = percentileByNodeForIteratee(
-      getColorWeight,
-      R.subtract
-    )(cy.nodes())
-
-    cy.nodes().forEach(node => {
-      node.data(
-        'colorScore',
-        colorWeightPercentileByNode.get(node)
-      )
-    })
-
-    // Apply generated style with label selectors
-    const nodeBaseSize = 100
-    cy.style([
-      {
-        selector: 'node',
-        style: {
-          "width": `mapData(score, 0, 1, ${nodeBaseSize}, ${3 * nodeBaseSize})`,
-          "height": `mapData(score, 0, 1, ${nodeBaseSize}, ${3 * nodeBaseSize})`,
-          // TODO: generate unique selectors for each node so we don't need a style function.
-          'background-color': element => peripheryGradient(element.data('colorScore')).toCSSHex(),
-          content: node => node.data('name'),
-          'font-size': '20px',
-          'text-background-color': '#fff',
-          'text-background-opacity': '0.5',
-        },
-      },
-      {
-        selector: 'node:selected',
-        style: {
-          'background-color': NodePrimaryColor,
-        },
-      },
-    ])
-  },
+  // Ascending
+  [ViewMode.center]: getCentralityColoring(R.subtract),
 }
 
 export default GraphColorerByMode
+
+// Get a coloring function based on node centrality.
+// If the comparator is ascending, peripheral nodes will take on the colors at the start
+// of the gradient and central nodes the end of the gradient.
+// If the comparator is descending, central nodes will take on the colors at the start
+// of the gradient and peripheral nodes the end of the gradient.
+function getCentralityColoring (centralityComparator) {
+  if (!centralityComparator) {
+    throw new Error('You must supply a centrality comparator')
+  }
+
+  return ({ labels, cy }) => {
+    // We need to compute this during render because it's extremely expensive, so we can't batch
+    // them all up during graph initialization.
+    const getClosenessCentrality = cy.$().ccn({
+      weight: edge => edge.data('weight'),
+    }).closeness
+
+    const closenessPercentileByNode = percentileByNodeForIteratee(
+      getClosenessCentrality
+    )(cy.nodes())
+
+    const degreePercentileByNode = percentileByNodeForIteratee(
+      node => node.data('normalizedDegreeCentrality')
+    )(cy.nodes())
+
+    const getColorWeight = node => (
+      0.5 * closenessPercentileByNode.get(node) +
+      0.5 * degreePercentileByNode.get(node)
+    )
+
+    const colorWeightPercentileByNode = percentileByNodeForIteratee(
+      getColorWeight,
+      centralityComparator
+    )(cy.nodes())
+
+    cy.nodes().forEach(node => {
+      node.data(
+        'colorScore',
+        colorWeightPercentileByNode.get(node)
+      )
+    })
+
+    // Apply generated style with label selectors
+    const nodeBaseSize = 100
+    cy.style([
+      {
+        selector: 'node',
+        style: {
+          "width": `mapData(score, 0, 1, ${nodeBaseSize}, ${3 * nodeBaseSize})`,
+          "height": `mapData(score, 0, 1, ${nodeBaseSize}, ${3 * nodeBaseSize})`,
+          // TODO: generate unique selectors for each node so we don't need a style function.
+          'background-color': element => peripheryGradient(element.data('colorScore')).toCSSHex(),
+          content: node => node.data('name'),
+          'font-size': '20px',
+          'text-background-color': '#fff',
+          'text-background-opacity': '0.5',
+        },
+      },
+      {
+        selector: 'node:selected',
+        style: {
+          'background-color': NodePrimaryColor,
+        },
+      },
+    ])
+  }
+}
 
 // Given a function f :: Node -> Float[0, 1], returns a map of node to the
 // node's percentile for the function f. (i.e. a Map<Node, Float[0,1]).
