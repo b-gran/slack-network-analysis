@@ -37,6 +37,7 @@ import * as Recompose from 'recompose'
 import K from 'fast-keys'
 
 import NetworkVisualization from '../NetworkVisualization'
+import NodeView from '../NodeView'
 
 // Graph physics plugin
 cytoscape.use(cola)
@@ -57,8 +58,8 @@ const state = mobxHmrObservable(module)({
   usersById: undefined,
 
   settings: {
-    maxEdgeWeight: String(0.6),
-    edgeLength: String(2000),
+    maxEdgeWeight: 0.6,
+    edgeLength: 2000,
     animation: true,
 
     mode: ViewMode.label,
@@ -183,6 +184,11 @@ class Visualize extends React.Component {
   }
 }
 
+const op_toString = operators.map(String)
+const op_isNonEmptyFloatString = operators.filter(R.allPass([ isFinite, R.complement(R.isEmpty) ]))
+const op_maxEdgeWeight = operators.map(R.path(['settings', 'maxEdgeWeight']))
+const op_edgeLength = operators.map(R.path(['settings', 'edgeLength']))
+
 const Sidebar = R.pipe(
   observer,
   inject(stores => ({
@@ -194,29 +200,56 @@ const Sidebar = R.pipe(
 )(componentFromStream(
   $props => {
     const userSearchHandler = Recompose.createEventHandler()
+    const maxEdgeWeightHandler = Recompose.createEventHandler()
+    const edgeLengthHandler = Recompose.createEventHandler()
+
+    const $setValidFloatEdgeWeight = Rx.from(maxEdgeWeightHandler.stream).pipe(op_isNonEmptyFloatString)
+    const $setValidFloatEdgeLength = Rx.from(edgeLengthHandler.stream).pipe(op_isNonEmptyFloatString)
+
+    const $latestEdgeWeight = Rx.merge(
+      $props.pipe(op_maxEdgeWeight, operators.distinctUntilChanged()),
+      maxEdgeWeightHandler.stream
+    )
+    const $latestEdgeLength = Rx.merge(
+      $props.pipe(op_edgeLength, operators.distinctUntilChanged()),
+      edgeLengthHandler.stream
+    )
+
+    const $initialProps = $props.pipe(operators.take(1))
+
+    //= Effects ==================
+    $setValidFloatEdgeWeight.subscribe(edgeWeight => updateSettings({
+      maxEdgeWeight: parseFloat(edgeWeight)
+    }))
+
+    $setValidFloatEdgeLength.subscribe(edgeLength => updateSettings({
+      edgeLength: parseFloat(edgeLength)
+    }))
+    //============================
 
     return Rx.combineLatest(
-      Rx.concat(
-        Rx.of(''),
-        userSearchHandler.stream,
-      ),
-      $props
+      $props,
+      Rx.concat(Rx.of(''), userSearchHandler.stream),
+      Rx.concat($initialProps.pipe(op_maxEdgeWeight), $latestEdgeWeight).pipe(op_toString),
+      Rx.concat($initialProps.pipe(op_edgeLength), $latestEdgeLength).pipe(op_toString),
     ).pipe(
-      operators.map(([userSearchTerm, props]) => {
+      operators.map(([props, userSearchTerm, maxEdgeWeight, edgeLength]) => {
         const visibleUsers = props.visibleUsers || []
         const matchingUsers = visibleUsers.filter(user => {
           return user.name.toLowerCase().indexOf(userSearchTerm) !== -1
         })
 
-        const sidebarProps = {
-          userSearchTerm,
-          matchingUsers,
-          onChangeUserSearchTerm: userSearchHandler.handler,
-
-          ...props,
-        }
-
-        return <PSidebar {...sidebarProps} />
+        return <PSidebar
+          {...props}
+          userSearchTerm={userSearchTerm}
+          matchingUsers={matchingUsers}
+          onChangeUserSearchTerm={userSearchHandler.handler}
+          inputs={{
+            maxEdgeWeight: maxEdgeWeight,
+            edgeLength: edgeLength,
+          }}
+          onChangeMaxEdgeWeight={maxEdgeWeightHandler.handler}
+          onChangeEdgeLength={edgeLengthHandler.handler} />
       })
     )
   }
@@ -251,13 +284,15 @@ class PSidebar extends React.Component {
     // (searchTerm: string) => void
     onChangeUserSearchTerm: PropTypes.func.isRequired,
 
-    // These props come as raw inputs, so they are strings instead of numbers.
-    settings: PropTypes.shape({
+    inputs: PropTypes.shape({
       maxEdgeWeight: PropTypes.string.isRequired,
       edgeLength: PropTypes.string.isRequired,
-      animation: PropTypes.bool,
-      mode: ViewModePropType.isRequired,
     }).isRequired,
+
+    onChangeMaxEdgeWeight: PropTypes.func.isRequired,
+    onChangeEdgeLength: PropTypes.func.isRequired,
+
+    settings: MProps.SettingsProp.isRequired,
   }
 
   render () {
@@ -275,17 +310,17 @@ class PSidebar extends React.Component {
             <Div marginRight="15px">
               <SidebarTextInput
                 width="4em"
-                value={this.props.settings.maxEdgeWeight}
-                onChange={evt => updateSettings({ maxEdgeWeight: evt.target.value })}/>
+                value={this.props.inputs.maxEdgeWeight}
+                onChange={evt => this.props.onChangeMaxEdgeWeight(evt.target.value)}/>
             </Div>
 
             <Slider
               className={style['rc-slider']}
-              value={safeMax(this.props.settings.maxEdgeWeight, 0.01)}
+              value={R.clamp(0.01, 1, this.props.settings.maxEdgeWeight)}
               min={0.01}
               max={1}
               step={0.01}
-              onChange={value => updateSettings({ maxEdgeWeight: String(value) })}/>
+              onChange={this.props.onChangeMaxEdgeWeight}/>
           </Div>
         </Div>
 
@@ -295,17 +330,17 @@ class PSidebar extends React.Component {
             <Div marginRight="15px">
               <SidebarTextInput
                 width="4em"
-                value={this.props.settings.edgeLength}
-                onChange={evt => updateSettings({ edgeLength: evt.target.value })}/>
+                value={this.props.inputs.edgeLength}
+                onChange={evt => this.props.onChangeEdgeLength(evt.target.value)}/>
             </Div>
 
             <Slider
               className={style['rc-slider']}
-              value={safeMax(this.props.settings.edgeLength, 1000)}
+              value={R.clamp(1000, 40000, this.props.settings.edgeLength)}
               min={1000}
               max={40000}
               step={1000}
-              onChange={value => updateSettings({ edgeLength: String(value) })}/>
+              onChange={this.props.onChangeEdgeLength}/>
           </Div>
         </Div>
 
@@ -510,11 +545,6 @@ const SidebarTextInput = glamorous.input({
     border: '1px solid #333',
   },
 }, ({ width }) => ({ width }))
-
-// TODO: clamp
-const safeMax = (maybeInvalid, valid) => isFinite(maybeInvalid)
-  ? Math.max(maybeInvalid, valid)
-  : valid
 
 export default () => (
   <Provider state={state}>

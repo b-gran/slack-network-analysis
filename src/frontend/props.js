@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types'
 import { PropTypes as MobxPropTypes } from 'mobx-react'
+import { ViewModePropType } from './NetworkSettings'
 
 export const JobData = PropTypes.shape({
   ever_run: PropTypes.bool.isRequired,
@@ -58,3 +59,10 @@ export const error = PropTypes.oneOfType([
   PropTypes.string,
   PropTypes.object,
 ])
+
+export const SettingsProp = PropTypes.shape({
+  maxEdgeWeight: PropTypes.number.isRequired,
+  edgeLength: PropTypes.number.isRequired,
+  animation: PropTypes.bool,
+  mode: ViewModePropType.isRequired,
+})

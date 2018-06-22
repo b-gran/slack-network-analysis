@@ -17,9 +17,8 @@ import { css } from 'glamor'
 import { inject } from 'mobx-react'
 import { hasDefinedProperties } from '../utils'
 import K from 'fast-keys'
-import { getColorsForLabels, getHumanReadableLabels, propagateLabels } from '../labelPropagation'
+import { getHumanReadableLabels, propagateLabels } from '../labelPropagation'
 import * as MProps from './props'
-import { ViewModePropType } from './NetworkSettings'
 
 import CyTooltipStream, { SELECT, UNSELECT } from './CyTooltipStream'
 import { A, B, Div, Li, Ul } from 'glamorous'
@@ -29,13 +28,6 @@ import ZoomOutMap from '@material-ui/icons/ZoomOutMap'
 
 import { NodePrimaryColor, NodeSecondaryColor } from './NetworkColoring'
 import GraphColorerByMode from './NetworkColoring'
-
-const SettingsProp = PropTypes.shape({
-  maxEdgeWeight: PropTypes.number.isRequired,
-  edgeLength: PropTypes.number.isRequired,
-  animation: PropTypes.bool,
-  mode: ViewModePropType.isRequired,
-})
 
 const CygraphNode = PropTypes.shape({
   group: PropTypes.oneOf(['nodes']).isRequired,
@@ -64,7 +56,7 @@ class Network extends React.Component {
     edges: PropTypes.arrayOf(CygraphEdge).isRequired,
     usersById: PropTypes.objectOf(MProps.User),
 
-    settings: SettingsProp.isRequired,
+    settings: MProps.SettingsProp.isRequired,
 
     $selectUser: PropTypes.object.isRequired,
   }
@@ -520,21 +512,6 @@ const NetworkStream = componentFromStream(
     const $needsUpdate = $props.pipe(
       // Only update the graph when we have nodes and edges
       operators.filter(hasDefinedProperties([ 'nodes', 'edges' ])),
-
-      // Only update the graph when we have valid settings
-      operators.filter(R.where({
-        settings: R.where({
-          maxEdgeWeight: isFinite,
-          edgeLength: isFinite,
-        })
-      })),
-
-      operators.map(R.evolve({
-        settings: R.evolve({
-          maxEdgeWeight: parseFloat,
-          edgeLength: parseFloat,
-        })
-      })),
       operators.debounceTime(500)
     )
 
@@ -551,13 +528,7 @@ NetworkStream.propTypes = {
   nodes: PropTypes.arrayOf(CygraphNode),
   edges: PropTypes.arrayOf(CygraphEdge),
   usersById: PropTypes.objectOf(MProps.User),
-
-  // These props come as raw inputs, so they are strings instead of numbers.
-  settings: PropTypes.shape({
-    maxEdgeWeight: PropTypes.string.isRequired,
-    edgeLength: PropTypes.string.isRequired,
-    animation: PropTypes.bool,
-  }).isRequired,
+  settings: MProps.SettingsProp.isRequired,
 
   // Stream that receives an event (the selected user) whenever a user is selected
   $selectUser: PropTypes.object.isRequired,
