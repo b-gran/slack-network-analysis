@@ -186,8 +186,20 @@ class Visualize extends React.Component {
 
 const op_toString = operators.map(String)
 const op_isNonEmptyFloatString = operators.filter(R.allPass([ isFinite, R.complement(R.isEmpty) ]))
-const op_maxEdgeWeight = operators.map(R.path(['settings', 'maxEdgeWeight']))
-const op_edgeLength = operators.map(R.path(['settings', 'edgeLength']))
+
+function latestNumericInput ($canonicalNumericValue, $inputValue) {
+  const $initialNumericValue = $canonicalNumericValue.pipe(operators.take(1))
+  const $safeInput = Rx.concat($initialNumericValue, $inputValue)
+  const $distinctNumericValue = $canonicalNumericValue.pipe(operators.distinctUntilChanged())
+  return Rx.merge($distinctNumericValue, $safeInput).pipe(
+    operators.withLatestFrom($distinctNumericValue, $safeInput),
+    operators.map(([latest, latestSetting, latestInput]) =>
+      isFinite(latestInput) && (parseFloat(latestInput) === latestSetting)
+        ? latestInput
+        : latest
+    )
+  )
+}
 
 const Sidebar = R.pipe(
   observer,
@@ -203,19 +215,14 @@ const Sidebar = R.pipe(
     const maxEdgeWeightHandler = Recompose.createEventHandler()
     const edgeLengthHandler = Recompose.createEventHandler()
 
+    const $maxEdgeWeight = $props.pipe(operators.map(R.path(['settings', 'maxEdgeWeight'])))
+    const $edgeLength = $props.pipe(operators.map(R.path(['settings', 'edgeLength'])))
+
     const $setValidFloatEdgeWeight = Rx.from(maxEdgeWeightHandler.stream).pipe(op_isNonEmptyFloatString)
     const $setValidFloatEdgeLength = Rx.from(edgeLengthHandler.stream).pipe(op_isNonEmptyFloatString)
 
-    const $latestEdgeWeight = Rx.merge(
-      $props.pipe(op_maxEdgeWeight, operators.distinctUntilChanged()),
-      maxEdgeWeightHandler.stream
-    )
-    const $latestEdgeLength = Rx.merge(
-      $props.pipe(op_edgeLength, operators.distinctUntilChanged()),
-      edgeLengthHandler.stream
-    )
-
-    const $initialProps = $props.pipe(operators.take(1))
+    const $latestEdgeWeight = latestNumericInput($maxEdgeWeight, maxEdgeWeightHandler.stream)
+    const $latestEdgeLength = latestNumericInput($edgeLength, edgeLengthHandler.stream)
 
     //= Effects ==================
     $setValidFloatEdgeWeight.subscribe(edgeWeight => updateSettings({
@@ -230,8 +237,8 @@ const Sidebar = R.pipe(
     return Rx.combineLatest(
       $props,
       Rx.concat(Rx.of(''), userSearchHandler.stream),
-      Rx.concat($initialProps.pipe(op_maxEdgeWeight), $latestEdgeWeight).pipe(op_toString),
-      Rx.concat($initialProps.pipe(op_edgeLength), $latestEdgeLength).pipe(op_toString),
+      $latestEdgeWeight.pipe(op_toString),
+      $latestEdgeLength.pipe(op_toString),
     ).pipe(
       operators.map(([props, userSearchTerm, maxEdgeWeight, edgeLength]) => {
         const visibleUsers = props.visibleUsers || []
