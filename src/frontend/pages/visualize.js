@@ -187,6 +187,9 @@ class Visualize extends React.Component {
 const op_toString = operators.map(String)
 const op_isNonEmptyFloatString = operators.filter(R.allPass([ isFinite, R.complement(R.isEmpty) ]))
 
+// Given a canonical numeric value and a possibly non-numeric input value, returns the
+// most recent value of either stream. Prefers the input value to the canonical value
+// if the input is numeric and equal to the canonical value.
 function latestNumericInput ($canonicalNumericValue, $inputValue) {
   const $initialNumericValue = $canonicalNumericValue.pipe(operators.take(1))
   const $safeInput = Rx.concat($initialNumericValue, $inputValue)
