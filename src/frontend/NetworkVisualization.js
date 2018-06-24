@@ -242,9 +242,7 @@ class Network extends React.Component {
 
     // The resize stream isn't dependent on a particular graph instance so doesn't
     // need to be updated when props change.
-    this.resizeSubscription = this.props.$resize
-      .pipe(operators.tap(() => console.log('on resize')))
-      .subscribe(() => this.resizeGraph())
+    this.resizeSubscription = this.props.$resize.subscribe(() => this.resizeGraph())
   }
 
   componentWillUnmount () {
@@ -358,7 +356,10 @@ const PUserDataPopover = ({ node, onSelectUser, onFitCollection }) => {
               <Li key={targetNode.data('name')} display="table-row">
                 <Div display="table-cell" padding="5px 0">
                   <Typography>
-                    <A onClick={() => onSelectUser(targetNode.data('userId'))} padding="0 6px">
+                    <A onClick={() => onSelectUser(targetNode.data('userId'))}
+                       padding="0 6px"
+                       cursor="pointer"
+                       textDecoration="underline">
                       { targetNode.data('name') }
                     </A>
                   </Typography>
