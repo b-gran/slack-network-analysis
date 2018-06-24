@@ -42,6 +42,9 @@ class NodeView extends React.Component {
 
     const $stopResize = Rx.fromEvent(document.body, 'mouseup').pipe(operators.mapTo([false]))
     const $startResize = Rx.from(this.clickResize.stream).pipe(
+      // Effect: stop the click event from selecting text
+      operators.tap(event => event.preventDefault()),
+
       operators.map(event => [true, event.pageY, this.props.bottomBarHeightPx]),
     )
 
