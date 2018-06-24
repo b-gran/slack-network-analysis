@@ -50,6 +50,10 @@ css.global('.Popover-tipShape', {
   fill: '#FFFFFF'
 })
 
+const DEFAULT_BOTTOM_BAR_HEIGHT_PX = typeof window === 'object' && window.innerHeight
+  ? ((window.innerHeight * 0.2) | 0)
+  : 200
+
 const state = mobxHmrObservable(module)({
   error: undefined,
   graph: undefined,
@@ -67,6 +71,8 @@ const state = mobxHmrObservable(module)({
     color: ColorMode.label,
     size: SizeMode.degreeCentrality,
   },
+
+  bottomBarHeightPx: DEFAULT_BOTTOM_BAR_HEIGHT_PX,
 
   $selectUser: new Rx.Subject(),
 
@@ -174,10 +180,14 @@ class Visualize extends React.Component {
         <Head>
           <title>Slack Network Analysis: Visualization</title>
         </Head>
-        <Div display="flex" flexDirection="row" justifyContent="center" alignItems="center"
+        <Div display="flex" flexDirection="column" justifyContent="center" alignItems="center"
              height="100vh" position="relative">
-          <NetworkVisualization />
-          <Sidebar />
+          <Div display="flex" flexDirection="row" justifyContent="center" alignItems="stretch"
+               position="relative">
+            <NetworkVisualization />
+            <Sidebar />
+          </Div>
+          <NodeView />
         </Div>
       </React.Fragment>
     )
@@ -308,7 +318,6 @@ class PSidebar extends React.Component {
   render () {
     return (
       <Div
-        height="100vh"
         width="300px"
         flexGrow="1"
         background="linear-gradient(0deg, rgba(64,73,166,1) 0%, rgba(82,95,218,1) 100%)"
