@@ -52,6 +52,8 @@ class NodeView extends React.Component {
 
     const $stopResize = Rx.fromEvent(document.body, 'mouseup').pipe(operators.mapTo([false]))
     const $startResize = Rx.from(this.clickResize.stream).pipe(
+      operators.filter(evt => evt.button === 0), // Left clicks only
+
       // Effect: stop the click event from selecting text
       operators.tap(event => event.preventDefault()),
 
@@ -70,15 +72,11 @@ class NodeView extends React.Component {
 
     const $resize = $barHeight.pipe(
       operators.withLatestFrom($isResizing),
-      operators.map(([ barHeight, isResizing ]) => isResizing
-        ? Rx.of(barHeight)
-        : Rx.EMPTY
-      ),
-      operators.mergeAll(),
-      operators.map(height => Math.min(height, (
-        getDOMElementHeight(this.dom.titleBar) +
-        getDOMElementHeight(this.dom.content)
-      ) + 1)),
+      operators.filter(([barHeight, isResizing]) => isResizing),
+      operators.map(([height]) => Math.min(
+        height,
+        getDOMElementHeight(this.dom.titleBar) + getDOMElementHeight(this.dom.content) + 1
+      )),
       operators.distinctUntilChanged(),
     )
 
@@ -99,7 +97,7 @@ class NodeView extends React.Component {
         ref={ref => this.dom.titleBar = ref}
         className={titleBar.toString()}
         onMouseDown={this.clickResize.handler}>
-        <Div padding="3px 6px"><Typography>Users</Typography></Div>
+        <Div padding="3px 6px"><Typography>People</Typography></Div>
       </div>
       <Div overflow="scroll" background="#8AFF9E" zIndex="1">
         <div ref={ref => this.dom.content = ref} className={userList.toString()}>

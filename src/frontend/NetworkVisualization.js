@@ -58,6 +58,7 @@ class Network extends React.Component {
 
     settings: MProps.SettingsProp.isRequired,
 
+    $resize: PropTypes.object.isRequired,
     $selectUser: PropTypes.object.isRequired,
   }
 
@@ -68,6 +69,12 @@ class Network extends React.Component {
   layout = null
   subscription = null
   $tooltip = Rx.EMPTY
+
+  resizeSubscription = null
+
+  resizeGraph () {
+    this.graphVisualisation && this.graphVisualisation.resize()
+  }
 
   renderGraph () {
     const edgeLengthVal = this.props.settings.edgeLength
@@ -232,6 +239,16 @@ class Network extends React.Component {
     this.subscription = subscription
     this.$tooltip = $tooltip
     this.forceUpdate()
+
+    // The resize stream isn't dependent on a particular graph instance so doesn't
+    // need to be updated when props change.
+    this.resizeSubscription = this.props.$resize
+      .pipe(operators.tap(() => console.log('on resize')))
+      .subscribe(() => this.resizeGraph())
+  }
+
+  componentWillUnmount () {
+    this.resizeSubscription && this.resizeSubscription.unsubscribe()
   }
 
   doesGraphNeedUpdate (prevProps) {
@@ -515,10 +532,15 @@ const NetworkStream = componentFromStream(
       operators.debounceTime(500)
     )
 
+    const $resize = $props.pipe(
+      operators.map(props => props.bottomBarHeightPx),
+      operators.distinctUntilChanged()
+    )
+
     return Rx.concat(
       Rx.of(<NetworkEmpty/>),
       $needsUpdate.pipe(
-        operators.map(props => <Network {...props} />)
+        operators.map(props => <Network {...props} $resize={$resize} />)
       )
     )
   }
@@ -529,13 +551,13 @@ NetworkStream.propTypes = {
   edges: PropTypes.arrayOf(CygraphEdge),
   usersById: PropTypes.objectOf(MProps.User),
   settings: MProps.SettingsProp.isRequired,
+  bottomBarHeightPx: PropTypes.number.isRequired,
 
   // Stream that receives an event (the selected user) whenever a user is selected
   $selectUser: PropTypes.object.isRequired,
 }
 
 const graphContainer = css(important({
-  height: '100vh',
   width: 'calc(100vw - 300px)'
 }))
 

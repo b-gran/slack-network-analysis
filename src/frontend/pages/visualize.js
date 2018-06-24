@@ -180,10 +180,10 @@ class Visualize extends React.Component {
         <Head>
           <title>Slack Network Analysis: Visualization</title>
         </Head>
-        <Div display="flex" flexDirection="column" justifyContent="center" alignItems="center"
+        <Div display="flex" flexDirection="column" justifyContent="stretch" alignItems="center"
              height="100vh" position="relative">
           <Div display="flex" flexDirection="row" justifyContent="center" alignItems="stretch"
-               position="relative">
+               flexGrow="1" position="relative">
             <NetworkVisualization />
             <Sidebar />
           </Div>
