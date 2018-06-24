@@ -14,6 +14,7 @@ import Slider from 'rc-slider'
 import style from 'rc-slider/dist/rc-slider.css'
 import Select from 'material-ui/Select'
 import { MenuItem } from 'material-ui/Menu'
+import GPSFixed from '@material-ui/icons/GpsFixed'
 
 import glamorous, { Div } from 'glamorous'
 import { css } from 'glamor'
@@ -51,7 +52,7 @@ css.global('.Popover-tipShape', {
 })
 
 const DEFAULT_BOTTOM_BAR_HEIGHT_PX = typeof window === 'object' && window.innerHeight
-  ? ((window.innerHeight * 0.2) | 0)
+  ? ((window.innerHeight * 0.35) | 0)
   : 200
 
 const state = mobxHmrObservable(module)({
@@ -289,6 +290,8 @@ SidebarLabel.propTypes = {
 const sidebarLabel = css(important({
   color: '#ffffff',
   padding: '0.5rem 0',
+  display: 'flex',
+  alignItems: 'center',
 }))
 
 class PSidebar extends React.Component {
@@ -372,7 +375,10 @@ class PSidebar extends React.Component {
         </Div>
 
         <Div marginTop="15px">
-          <SidebarLabel>Users</SidebarLabel>
+          <SidebarLabel>
+            <GPSFixed />
+            People
+          </SidebarLabel>
           <UserSearchBar
             onSelectUser={this.props.onSelectUser}
             onChangeUserSearchTerm={this.props.onChangeUserSearchTerm}

@@ -11,6 +11,7 @@ import * as Recompose from 'recompose'
 
 import { css } from 'glamor'
 import glamorous, { Div } from 'glamorous'
+
 import Typography from 'material-ui/Typography'
 
 import * as MProps from './props'
@@ -92,6 +93,7 @@ class NodeView extends React.Component {
   render () {
     return <Div display="flex" flexDirection="column" justifyContent="flex-start" flexShrink="0"
                 transition="height 0.05s ease"
+                background="#FFFFFF"
                 alignItems="stretch" width="100vw" zIndex="1" height={this.props.bottomBarHeightPx}>
       <div
         ref={ref => this.dom.titleBar = ref}
@@ -99,17 +101,24 @@ class NodeView extends React.Component {
         onMouseDown={this.clickResize.handler}>
         <Div padding="3px 6px"><Typography>People</Typography></Div>
       </div>
-      <Div overflow="scroll" background="#8AFF9E" zIndex="1">
+      <Div overflow="scroll" zIndex="1">
         <div ref={ref => this.dom.content = ref} className={userList.toString()}>
         {
           this.props.visibleUsers
-            .map(user => <Div padding="20px">{ user.name }</Div>)
+            .map(user => <Div
+              border="1px solid #F0F0F0"
+              key={user.user_id}
+              padding="20px">
+              <Typography>{user.name}</Typography>
+            </Div>)
         }
         </div>
       </Div>
     </Div>
   }
 }
+
+const elementListItemBorder = 'F0F0F0'
 
 const userList = css(important({
   display: 'flex',
