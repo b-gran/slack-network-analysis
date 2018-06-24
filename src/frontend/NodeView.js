@@ -21,9 +21,6 @@ const getBottomBarHeightSetterAction = store => action(
   bottomBarHeightPx => store.bottomBarHeightPx = bottomBarHeightPx
 )
 
-const START_RESIZE = 'START_RESIZE'
-const STOP_RESIZE = 'STOP_RESIZE'
-
 class NodeView extends React.Component {
   static propTypes = {
     visibleUsers: PropTypes.arrayOf(MProps.User).isRequired,
@@ -32,30 +29,28 @@ class NodeView extends React.Component {
     onSetBottomBarHeightPx: PropTypes.func.isRequired,
   }
 
-  $mouseDeltaY = Rx.EMPTY
-  $stopResize = Rx.EMPTY
   clickResize = Recompose.createEventHandler()
   subscription = null
 
   componentDidMount () {
-    this.$mouseDeltaY = Rx.fromEvent(document.body, 'mousemove')
+    const $mouseYPosition = Rx.fromEvent(document.body, 'mousemove')
       .pipe(
         operators.throttleTime(100),
         operators.map(evt => evt.pageY),
         operators.distinctUntilChanged(),
       )
 
-    this.$stopResize = Rx.fromEvent(document.body, 'mouseup').pipe(operators.mapTo([false]))
+    const $stopResize = Rx.fromEvent(document.body, 'mouseup').pipe(operators.mapTo([false]))
     const $startResize = Rx.from(this.clickResize.stream).pipe(
       operators.map(event => [true, event.pageY, this.props.bottomBarHeightPx]),
     )
 
-    const $barHeight = this.$mouseDeltaY.pipe(
+    const $barHeight = $mouseYPosition.pipe(
       operators.withLatestFrom($startResize),
       operators.map(([latestY, [, initialY, initialHeight]]) => initialHeight + (initialY - latestY)),
     )
 
-    const $isResizing = Rx.merge(this.$stopResize, $startResize).pipe(
+    const $isResizing = Rx.merge($stopResize, $startResize).pipe(
       operators.map(R.nth(0)),
       operators.startWith(false)
     )
