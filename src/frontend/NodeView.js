@@ -234,14 +234,7 @@ function sortNodesForMode (nodes, usersById, sortMode) {
           return R.trim(usersById[node.data('userId')].name.toLowerCase())
         }
       )
-      return (node1, node2) => {
-        // TODO: for debugging
-        const node1name = getNodeName(node1)
-        const node2name = getNodeName(node2)
-        const result = getNodeName(node1) >= getNodeName(node2)
-
-        return getNodeName(node1) >= getNodeName(node2)
-      }
+      return (node1, node2) => getNodeName(node1) >= getNodeName(node2) ? 1 : -1
     })(),
   }[sortMode]
 
