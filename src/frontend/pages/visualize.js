@@ -65,7 +65,7 @@ const state = mobxHmrObservable(module)({
   settings: {
     maxEdgeWeight: 0.6,
     edgeLength: 2000,
-    animation: true,
+    animation: false,
 
     mode: ViewMode.label,
 
@@ -133,6 +133,7 @@ const state = mobxHmrObservable(module)({
     }).filter(filterEdge)
   },
 
+  // TODO: attach the node to the user
   get visibleUsers () {
     if (!this.usersById || !this.nodes || !this.edges) {
       return undefined
@@ -147,6 +148,21 @@ const state = mobxHmrObservable(module)({
     }).toArray().map(node => {
       return this.usersById[node.data('userId')]
     })
+  },
+
+  // TODO: attach the node to the user
+  get visibleNodes () {
+    if (!this.usersById || !this.nodes || !this.edges) {
+      return undefined
+    }
+
+    return cytoscape({
+      headless: true,
+      elements: [ ...this.nodes, ...this.edges ]
+    }).nodes().filter(node => {
+      const edges = node.connectedEdges()
+      return edges.length > 0
+    }).toArray()
   },
 })
 

@@ -13,10 +13,12 @@ import { css } from 'glamor'
 import glamorous, { Div } from 'glamorous'
 
 import Typography from 'material-ui/Typography'
+import Sort from '@material-ui/icons/Sort'
 
 import * as MProps from './props'
 import { componentFromStream, important } from './utils'
 import { hasDefinedProperties } from '../utils'
+import { centralityFactory } from './centrality'
 
 // HACK: temporary until the state is refactored into a separate module
 const getBottomBarHeightSetterAction = store => action(
@@ -27,12 +29,22 @@ function getDOMElementHeight (dom) {
   return dom.getBoundingClientRect().height
 }
 
+const SortMode = {
+  name: 'name',
+  weightedCentrality: 'weightedCentrality',
+}
+
 class NodeView extends React.Component {
   static propTypes = {
     visibleUsers: PropTypes.arrayOf(MProps.User).isRequired,
+    visibleNodes: PropTypes.arrayOf(MProps.Node).isRequired,
     settings: MProps.SettingsProp.isRequired,
     bottomBarHeightPx: PropTypes.number.isRequired,
+
     onSetBottomBarHeightPx: PropTypes.func.isRequired,
+
+    onChangeSortMode: PropTypes.func.isRequired,
+    sortMode: PropTypes.oneOf(Object.keys(SortMode)).isRequired,
   }
 
   clickResize = Recompose.createEventHandler()
@@ -100,6 +112,19 @@ class NodeView extends React.Component {
         className={titleBar.toString()}
         onMouseDown={this.clickResize.handler}>
         <Div padding="3px 6px"><Typography>People</Typography></Div>
+
+        <TitleDivider />
+
+        <Div display="flex" alignItems="center">
+          <Sort className={titleIcon.toString()} />
+          <select
+            onMouseDown={evt => evt.stopPropagation()}
+            onChange={evt => this.props.onChangeSortMode(evt.target.value)}
+            value={this.props.sortMode}>
+            <option value={SortMode.name}>By name</option>
+            <option value={SortMode.weightedCentrality}>By weighted centrality</option>
+          </select>
+        </Div>
       </div>
       <Div overflow="scroll" zIndex="1">
         <div ref={ref => this.dom.content = ref} className={userList.toString()}>
@@ -118,7 +143,12 @@ class NodeView extends React.Component {
   }
 }
 
-const elementListItemBorder = 'F0F0F0'
+const TitleDivider = () => <Div
+  width="1px"
+  background="#CCCCCC"
+  alignSelf="stretch"
+  margin="3px 6px"/>
+TitleDivider.displayName = 'TitleDivider'
 
 const userList = css(important({
   display: 'flex',
@@ -130,29 +160,92 @@ const titleBar = css(important({
   borderBottom: '1px solid #CCCCCC',
   borderTop: '1px solid #CCCCCC',
   cursor: 'ns-resize',
+
+  flexShrink: 0,
+
+  display: 'flex',
+  alignItems: 'center',
+}))
+
+const titleIcon = css(important({
+  fontSize: '1rem'
 }))
 
 const ConnectedNodeView = inject(stores => ({
   visibleUsers: stores.state.visibleUsers,
+  visibleNodes: stores.state.visibleNodes,
+  usersById: stores.state.usersById,
+
   settings: stores.state.settings,
   bottomBarHeightPx: stores.state.bottomBarHeightPx,
 
   onSetBottomBarHeightPx: getBottomBarHeightSetterAction(stores.state),
 }))(componentFromStream(
   $props => {
+    const sortModeEventHandler = Recompose.createEventHandler()
+    const $sortMode = Rx.from(sortModeEventHandler.stream)
+      .pipe(operators.startWith(SortMode.name))
+
     const $needsUpdate = $props.pipe(
       operators.filter(hasDefinedProperties(['visibleUsers']))
     )
 
-    return $needsUpdate.pipe(
-      operators.map(props => <NodeView
+    return Rx.combineLatest($needsUpdate, $sortMode).pipe(
+      operators.map(([props, sortMode]) => {
+        const visibleUsers = sortNodesForMode(props.visibleNodes, props.usersById, sortMode)
+            .map(node => props.usersById[node.data('userId')])
+
+        return [{
+          ...props,
+          visibleUsers: visibleUsers,
+        }, sortMode]
+      }),
+      operators.map(([props, sortMode]) => <NodeView
         bottomBarHeightPx={props.bottomBarHeightPx}
         settings={props.settings}
         visibleUsers={props.visibleUsers}
-        onSetBottomBarHeightPx={props.onSetBottomBarHeightPx}/>)
+        visibleNodes={props.visibleNodes}
+        onSetBottomBarHeightPx={props.onSetBottomBarHeightPx}
+        onChangeSortMode={sortModeEventHandler.handler}
+        sortMode={sortMode}/>)
     )
   }
 ))
 ConnectedNodeView.displayName = 'ConnectedNodeView'
+
+function sortNodesForMode (nodes, usersById, sortMode) {
+  if (nodes.length === 0) {
+    return nodes
+  }
+
+  const sortFunction = {
+    [SortMode.weightedCentrality]: (() => {
+      // TODO: performance is fucked
+      // const getWeightedCentrality = R.memoizeWith(
+      //   node => node.data('id'),
+      //   centralityFactory(nodes[0].cy())
+      // )
+      // return (node1, node2) => getWeightedCentrality(node1) - getWeightedCentrality(node2)
+    })(),
+    [SortMode.name]: (() => {
+      const getNodeName = R.memoizeWith(
+        node => node.data('userId'),
+        node => {
+          return R.trim(usersById[node.data('userId')].name.toLowerCase())
+        }
+      )
+      return (node1, node2) => {
+        // TODO: for debugging
+        const node1name = getNodeName(node1)
+        const node2name = getNodeName(node2)
+        const result = getNodeName(node1) >= getNodeName(node2)
+
+        return getNodeName(node1) >= getNodeName(node2)
+      }
+    })(),
+  }[sortMode]
+
+  return R.sort(sortFunction, nodes)
+}
 
 export default ConnectedNodeView
