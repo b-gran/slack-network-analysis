@@ -194,29 +194,3 @@ function getCentralityColoring (centralityComparator) {
     ])
   }
 }
-
-// Given a function f :: Node -> Float[0, 1], returns a map of node to the
-// node's percentile for the function f. (i.e. a Map<Node, Float[0,1]).
-const percentileByNodeForIteratee = (f, comparator = R.subtract) => nodes => {
-  const valueByNode = new Map(R.zip(
-    nodes,
-    nodes.map(f)
-  ))
-
-  const orderedByValue = R.sort(
-    (a, b) => comparator(valueByNode.get(a), valueByNode.get(b)),
-    nodes
-  )
-
-  return new Map(R.zip(
-    orderedByValue,
-    toIndexPercentile(orderedByValue)
-  ))
-}
-
-
-// Returns a new array where the value at each index is the percentile of that index
-// (i.e. the index divided by the length of the array).
-function toIndexPercentile (array) {
-  return array.map((_, index) => index / array.length)
-}
