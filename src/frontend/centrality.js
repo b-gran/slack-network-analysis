@@ -2,7 +2,7 @@ import * as R from 'ramda'
 
 // It's expensive to compute the percentiles, so this module provides a factory so that the
 // percentiles can be re-used.
-export function centralityFactory (cy) {
+export function centralityFactory (cy, comparator = R.subtract) {
   // We need to compute this during render because it's extremely expensive, so we can't batch
   // them all up during graph initialization.
   const getClosenessCentrality = cy.$().ccn({
@@ -24,7 +24,7 @@ export function centralityFactory (cy) {
 
   const colorWeightPercentileByNode = percentileByNodeForIteratee(
     getColorWeight,
-    R.subtract
+    comparator
   )(cy.nodes())
 
   return node => colorWeightPercentileByNode.get(node)

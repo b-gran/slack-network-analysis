@@ -4,6 +4,7 @@ import { range } from '../utils'
 
 import { ViewMode } from './NetworkSettings'
 import { getColorsForLabels } from '../labelPropagation'
+import { centralityFactory } from './centrality'
 
 class Color {
   static fromCSSHex = R.pipe(
@@ -163,35 +164,9 @@ function getCentralityColoring (centralityComparator) {
   }
 
   return ({ labels, cy }) => {
-    // We need to compute this during render because it's extremely expensive, so we can't batch
-    // them all up during graph initialization.
-    const getClosenessCentrality = cy.$().ccn({
-      weight: edge => edge.data('weight'),
-    }).closeness
-
-    const closenessPercentileByNode = percentileByNodeForIteratee(
-      getClosenessCentrality
-    )(cy.nodes())
-
-    const degreePercentileByNode = percentileByNodeForIteratee(
-      node => node.data('normalizedDegreeCentrality')
-    )(cy.nodes())
-
-    const getColorWeight = node => (
-      0.5 * closenessPercentileByNode.get(node) +
-      0.5 * degreePercentileByNode.get(node)
-    )
-
-    const colorWeightPercentileByNode = percentileByNodeForIteratee(
-      getColorWeight,
-      centralityComparator
-    )(cy.nodes())
-
+    const getWeightedCentrality = centralityFactory(cy, centralityComparator)
     cy.nodes().forEach(node => {
-      node.data(
-        'colorScore',
-        colorWeightPercentileByNode.get(node)
-      )
+      node.data('colorScore', getWeightedCentrality(node))
     })
 
     // Apply generated style with label selectors
