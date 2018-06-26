@@ -135,19 +135,11 @@ const state = mobxHmrObservable(module)({
 
   // TODO: attach the node to the user
   get visibleUsers () {
-    if (!this.usersById || !this.nodes || !this.edges) {
+    if (!this.usersById || !this.visibleNodes) {
       return undefined
     }
 
-    return cytoscape({
-      headless: true,
-      elements: [ ...this.nodes, ...this.edges ]
-    }).nodes().filter(node => {
-      const edges = node.connectedEdges()
-      return edges.length > 0
-    }).toArray().map(node => {
-      return this.usersById[node.data('userId')]
-    })
+    return this.visibleNodes.map(node => this.usersById[node.data('userId')])
   },
 
   // TODO: attach the node to the user
@@ -156,13 +148,22 @@ const state = mobxHmrObservable(module)({
       return undefined
     }
 
-    return cytoscape({
+    const cy = cytoscape({
       headless: true,
       elements: [ ...this.nodes, ...this.edges ]
-    }).nodes().filter(node => {
+    })
+
+    // Remove nodes without edges.
+    // Why do this? If the cardinality of the graph is large, the normalized centrality
+    // algorithms are _extremely_ slow. Since we don't care about these nodes anyway if we're
+    // working with the visible nodes, we can substantially improve the performance by just
+    // removing them to reduce the cardinality.
+    cy.nodes().filter(node => {
       const edges = node.connectedEdges()
-      return edges.length > 0
-    }).toArray()
+      return edges.length === 0
+    }).remove()
+
+    return cy.nodes().toArray()
   },
 })
 

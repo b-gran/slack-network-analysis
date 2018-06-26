@@ -218,14 +218,16 @@ function sortNodesForMode (nodes, usersById, sortMode) {
     return nodes
   }
 
+  const cy = nodes[0].cy()
+  const getWeightedCentralityNotMemoized = centralityFactory(cy)
+
   const sortFunction = {
     [SortMode.weightedCentrality]: (() => {
-      // TODO: performance is fucked
-      // const getWeightedCentrality = R.memoizeWith(
-      //   node => node.data('id'),
-      //   centralityFactory(nodes[0].cy())
-      // )
-      // return (node1, node2) => getWeightedCentrality(node1) - getWeightedCentrality(node2)
+      const getWeightedCentrality = R.memoizeWith(
+        node => node.data('id'),
+        getWeightedCentralityNotMemoized
+      )
+      return (node1, node2) => getWeightedCentrality(node1) - getWeightedCentrality(node2)
     })(),
     [SortMode.name]: (() => {
       const getNodeName = R.memoizeWith(
