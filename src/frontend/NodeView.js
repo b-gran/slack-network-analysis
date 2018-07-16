@@ -45,6 +45,8 @@ class NodeView extends React.Component {
 
     onChangeSortMode: PropTypes.func.isRequired,
     sortMode: PropTypes.oneOf(Object.keys(SortMode)).isRequired,
+
+    onSelectUser: PropTypes.func.isRequired,
   }
 
   clickResize = Recompose.createEventHandler()
@@ -130,17 +132,34 @@ class NodeView extends React.Component {
         <div ref={ref => this.dom.content = ref} className={userList.toString()}>
         {
           this.props.visibleUsers
-            .map(user => <Div
-              border="1px solid #F0F0F0"
+            .map(user => <User
               key={user.user_id}
-              padding="20px">
-              <Typography>{user.name}</Typography>
-            </Div>)
+              name={user.name}
+              onSelect={() => this.props.onSelectUser(user)}
+            />)
         }
         </div>
       </Div>
     </Div>
   }
+}
+
+const User = ({ name, onSelect }) => <Div
+  css={{
+    ':hover': {
+      background: 'rgb(235, 242, 251)'
+    }
+  }}
+  cursor="pointer"
+  onClick={onSelect}
+  border="1px solid #F0F0F0"
+  padding="20px">
+  <Typography>{name}</Typography>
+</Div>
+User.displayName = 'User'
+User.propTypes = {
+  name: PropTypes.string.isRequired,
+  onSelect: PropTypes.func.isRequired,
 }
 
 const TitleDivider = () => <Div
@@ -180,6 +199,8 @@ const ConnectedNodeView = inject(stores => ({
   bottomBarHeightPx: stores.state.bottomBarHeightPx,
 
   onSetBottomBarHeightPx: getBottomBarHeightSetterAction(stores.state),
+
+  onSelectUser: user => stores.state.$selectUser.next(user),
 }))(componentFromStream(
   $props => {
     const sortModeEventHandler = Recompose.createEventHandler()
@@ -207,7 +228,8 @@ const ConnectedNodeView = inject(stores => ({
         visibleNodes={props.visibleNodes}
         onSetBottomBarHeightPx={props.onSetBottomBarHeightPx}
         onChangeSortMode={sortModeEventHandler.handler}
-        sortMode={sortMode}/>)
+        sortMode={sortMode}
+        onSelectUser={props.onSelectUser} />)
     )
   }
 ))
