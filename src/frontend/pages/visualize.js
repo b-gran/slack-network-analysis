@@ -341,78 +341,79 @@ class PSidebar extends React.Component {
         width="300px"
         flexGrow="1"
         background="linear-gradient(0deg, rgba(64,73,166,1) 0%, rgba(82,95,218,1) 100%)"
-        boxShadow="4px 0px 20px 1px"
-        padding="0 15px">
-        <Div marginTop="15px">
-          <SidebarLabel>Maximum edge weight</SidebarLabel>
-          <Div display="flex" alignItems="center">
-            <Div marginRight="15px">
-              <SidebarTextInput
-                width="4em"
-                value={this.props.inputs.maxEdgeWeight}
-                onChange={evt => this.props.onChangeMaxEdgeWeight(evt.target.value)}/>
+        boxShadow="4px 0px 20px 1px">
+        <Div padding="0 15px">
+          <Div marginTop="15px">
+            <SidebarLabel>Maximum edge weight</SidebarLabel>
+            <Div display="flex" alignItems="center">
+              <Div marginRight="15px">
+                <SidebarTextInput
+                  width="4em"
+                  value={this.props.inputs.maxEdgeWeight}
+                  onChange={evt => this.props.onChangeMaxEdgeWeight(evt.target.value)}/>
+              </Div>
+
+              <Slider
+                className={style['rc-slider']}
+                value={R.clamp(0.01, 1, this.props.settings.maxEdgeWeight)}
+                min={0.01}
+                max={1}
+                step={0.01}
+                onChange={this.props.onChangeMaxEdgeWeight}/>
             </Div>
-
-            <Slider
-              className={style['rc-slider']}
-              value={R.clamp(0.01, 1, this.props.settings.maxEdgeWeight)}
-              min={0.01}
-              max={1}
-              step={0.01}
-              onChange={this.props.onChangeMaxEdgeWeight}/>
           </Div>
-        </Div>
 
-        <Div marginTop="15px">
-          <SidebarLabel>Edge length</SidebarLabel>
-          <Div display="flex" alignItems="center">
-            <Div marginRight="15px">
-              <SidebarTextInput
-                width="4em"
-                value={this.props.inputs.edgeLength}
-                onChange={evt => this.props.onChangeEdgeLength(evt.target.value)}/>
+          <Div marginTop="15px">
+            <SidebarLabel>Edge length</SidebarLabel>
+            <Div display="flex" alignItems="center">
+              <Div marginRight="15px">
+                <SidebarTextInput
+                  width="4em"
+                  value={this.props.inputs.edgeLength}
+                  onChange={evt => this.props.onChangeEdgeLength(evt.target.value)}/>
+              </Div>
+
+              <Slider
+                className={style['rc-slider']}
+                value={R.clamp(1000, 40000, this.props.settings.edgeLength)}
+                min={1000}
+                max={40000}
+                step={1000}
+                onChange={this.props.onChangeEdgeLength}/>
             </Div>
-
-            <Slider
-              className={style['rc-slider']}
-              value={R.clamp(1000, 40000, this.props.settings.edgeLength)}
-              min={1000}
-              max={40000}
-              step={1000}
-              onChange={this.props.onChangeEdgeLength}/>
           </Div>
-        </Div>
 
-        <Div marginTop="15px">
-          <Div display="flex" alignItems="center">
-            <SidebarLabel>Animation</SidebarLabel>
-            <Switch checked={this.props.settings.animation}
-                    onChange={evt => updateSettings({ animation: evt.target.checked })}/>
+          <Div marginTop="15px">
+            <Div display="flex" alignItems="center">
+              <SidebarLabel>Animation</SidebarLabel>
+              <Switch checked={this.props.settings.animation}
+                      onChange={evt => updateSettings({ animation: evt.target.checked })}/>
+            </Div>
           </Div>
-        </Div>
 
-        <Div marginTop="15px">
-          <SidebarLabel>
-            <GPSFixed />
-            People
-          </SidebarLabel>
-          <UserSearchBar
-            onSelectUser={this.props.onSelectUser}
-            onChangeUserSearchTerm={this.props.onChangeUserSearchTerm}
-            matchingUsers={this.props.matchingUsers}
-            userSearchTerm={this.props.userSearchTerm} />
-        </Div>
+          <Div marginTop="15px">
+            <SidebarLabel>
+              <GPSFixed />
+              People
+            </SidebarLabel>
+            <UserSearchBar
+              onSelectUser={this.props.onSelectUser}
+              onChangeUserSearchTerm={this.props.onChangeUserSearchTerm}
+              matchingUsers={this.props.matchingUsers}
+              userSearchTerm={this.props.userSearchTerm} />
+          </Div>
 
-        <Div marginTop="15px">
-          <SidebarLabel>Mode</SidebarLabel>
-          <Div background="#ffffff" padding="10px" borderRadius="4px" display="inline">
-            <Select
-              value={this.props.settings.mode}
-              onChange={evt => updateSettings({ mode: evt.target.value })}>
-              <MenuItem value={ViewMode.label}>Label</MenuItem>
-              <MenuItem value={ViewMode.center}>Center</MenuItem>
-              <MenuItem value={ViewMode.periphery}>Periphery</MenuItem>
-            </Select>
+          <Div marginTop="15px">
+            <SidebarLabel>Mode</SidebarLabel>
+            <Div background="#ffffff" padding="10px" borderRadius="4px" display="inline">
+              <Select
+                value={this.props.settings.mode}
+                onChange={evt => updateSettings({ mode: evt.target.value })}>
+                <MenuItem value={ViewMode.label}>Label</MenuItem>
+                <MenuItem value={ViewMode.center}>Center</MenuItem>
+                <MenuItem value={ViewMode.periphery}>Periphery</MenuItem>
+              </Select>
+            </Div>
           </Div>
         </Div>
       </Div>
