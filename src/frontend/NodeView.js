@@ -88,9 +88,9 @@ class NodeView extends React.Component {
     const $resize = $barHeight.pipe(
       operators.withLatestFrom($isResizing),
       operators.filter(([barHeight, isResizing]) => isResizing),
-      operators.map(([height]) => Math.min(
+      operators.map(([height]) => Math.max(
         height,
-        getDOMElementHeight(this.dom.titleBar) + getDOMElementHeight(this.dom.content) + 1
+        getDOMElementHeight(this.dom.titleBar) + 1
       )),
       operators.distinctUntilChanged(),
     )
