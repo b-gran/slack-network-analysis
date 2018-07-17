@@ -52,7 +52,7 @@ css.global('.Popover-tipShape', {
 })
 
 const DEFAULT_BOTTOM_BAR_HEIGHT_PX = typeof window === 'object' && window.innerHeight
-  ? ((window.innerHeight * 0.35) | 0)
+  ? ((window.innerHeight * 0.1) | 0)
   : 200
 
 const state = mobxHmrObservable(module)({
