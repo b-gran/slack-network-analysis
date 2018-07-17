@@ -37,7 +37,6 @@ const SortMode = {
 class NodeView extends React.Component {
   static propTypes = {
     visibleUsers: PropTypes.arrayOf(MProps.User).isRequired,
-    visibleNodes: PropTypes.arrayOf(MProps.Node).isRequired,
     settings: MProps.SettingsProp.isRequired,
     bottomBarHeightPx: PropTypes.number.isRequired,
 
@@ -120,7 +119,7 @@ class NodeView extends React.Component {
 
         <TitleDivider />
 
-        <Div display="flex" alignItems="center" padding="0 10px">
+        <TitleBarListItem>
           <Sort className={titleIcon.toString()} />
           <select
             onMouseDown={evt => evt.stopPropagation()}
@@ -129,16 +128,16 @@ class NodeView extends React.Component {
             <option value={SortMode.name}>By name</option>
             <option value={SortMode.weightedCentrality}>By weighted centrality</option>
           </select>
-        </Div>
+        </TitleBarListItem>
 
-        <Div display="flex" alignItems="center" padding="0 10px">
+        <TitleBarListItem>
           <input
             type="text"
             value={this.props.userSearchTerm}
             onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}
             placeholder="Filter (name)"
             onMouseDown={evt => evt.stopPropagation()} />
-        </Div>
+        </TitleBarListItem>
       </div>
       <Div overflow="scroll" zIndex="1">
         <div ref={ref => this.dom.content = ref} className={userList.toString()}>
@@ -244,16 +243,12 @@ const ConnectedNodeView = inject(stores => ({
           return user.name.toLowerCase().indexOf(userSearchTerm) !== -1
         })
 
-        return [{
-          ...props,
-          visibleUsers: matchingVisibleUsers,
-        }, sortMode, userSearchTerm]
+        return [props, sortMode, userSearchTerm, matchingVisibleUsers]
       }),
-      operators.map(([props, sortMode, userSearchTerm]) => <NodeView
+      operators.map(([props, sortMode, userSearchTerm, matchingVisibleUsers]) => <NodeView
         bottomBarHeightPx={props.bottomBarHeightPx}
         settings={props.settings}
-        visibleUsers={props.visibleUsers}
-        visibleNodes={props.visibleNodes}
+        visibleUsers={matchingVisibleUsers}
         onSetBottomBarHeightPx={props.onSetBottomBarHeightPx}
         onChangeSortMode={sortModeEventHandler.handler}
         sortMode={sortMode}
