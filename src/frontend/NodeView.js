@@ -47,6 +47,9 @@ class NodeView extends React.Component {
     sortMode: PropTypes.oneOf(Object.keys(SortMode)).isRequired,
 
     onSelectUser: PropTypes.func.isRequired,
+
+    userSearchTerm: PropTypes.string.isRequired,
+    onChangeUserSearchTerm: PropTypes.func.isRequired,
   }
 
   clickResize = Recompose.createEventHandler()
@@ -117,7 +120,7 @@ class NodeView extends React.Component {
 
         <TitleDivider />
 
-        <Div display="flex" alignItems="center">
+        <Div display="flex" alignItems="center" padding="0 10px">
           <Sort className={titleIcon.toString()} />
           <select
             onMouseDown={evt => evt.stopPropagation()}
@@ -126,6 +129,15 @@ class NodeView extends React.Component {
             <option value={SortMode.name}>By name</option>
             <option value={SortMode.weightedCentrality}>By weighted centrality</option>
           </select>
+        </Div>
+
+        <Div display="flex" alignItems="center" padding="0 10px">
+          <input
+            type="text"
+            value={this.props.userSearchTerm}
+            onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}
+            placeholder="Filter (name)"
+            onMouseDown={evt => evt.stopPropagation()} />
         </Div>
       </div>
       <Div overflow="scroll" zIndex="1">
@@ -143,6 +155,12 @@ class NodeView extends React.Component {
     </Div>
   }
 }
+
+const TitleBarListItem = glamorous.div({
+  display: 'flex',
+  alignItems: 'center',
+  padding: '0 10px',
+})
 
 const User = ({ name, onSelect }) => <Div
   css={{
@@ -203,6 +221,8 @@ const ConnectedNodeView = inject(stores => ({
   onSelectUser: user => stores.state.$selectUser.next(user),
 }))(componentFromStream(
   $props => {
+    const userSearchHandler = Recompose.createEventHandler()
+
     const sortModeEventHandler = Recompose.createEventHandler()
     const $sortMode = Rx.from(sortModeEventHandler.stream)
       .pipe(operators.startWith(SortMode.name))
@@ -211,17 +231,25 @@ const ConnectedNodeView = inject(stores => ({
       operators.filter(hasDefinedProperties(['visibleUsers']))
     )
 
-    return Rx.combineLatest($needsUpdate, $sortMode).pipe(
-      operators.map(([props, sortMode]) => {
-        const visibleUsers = sortNodesForMode(props.visibleNodes, props.usersById, sortMode)
+    return Rx.combineLatest(
+      $needsUpdate,
+      $sortMode,
+      Rx.concat(Rx.of(''), userSearchHandler.stream),
+    ).pipe(
+      operators.map(([props, sortMode, userSearchTerm]) => {
+        const usersInGraph = sortNodesForMode(props.visibleNodes, props.usersById, sortMode)
             .map(node => props.usersById[node.data('userId')])
+
+        const matchingVisibleUsers = usersInGraph.filter(user => {
+          return user.name.toLowerCase().indexOf(userSearchTerm) !== -1
+        })
 
         return [{
           ...props,
-          visibleUsers: visibleUsers,
-        }, sortMode]
+          visibleUsers: matchingVisibleUsers,
+        }, sortMode, userSearchTerm]
       }),
-      operators.map(([props, sortMode]) => <NodeView
+      operators.map(([props, sortMode, userSearchTerm]) => <NodeView
         bottomBarHeightPx={props.bottomBarHeightPx}
         settings={props.settings}
         visibleUsers={props.visibleUsers}
@@ -229,7 +257,9 @@ const ConnectedNodeView = inject(stores => ({
         onSetBottomBarHeightPx={props.onSetBottomBarHeightPx}
         onChangeSortMode={sortModeEventHandler.handler}
         sortMode={sortMode}
-        onSelectUser={props.onSelectUser} />)
+        onSelectUser={props.onSelectUser}
+        userSearchTerm={userSearchTerm}
+        onChangeUserSearchTerm={userSearchHandler.handler} />)
     )
   }
 ))
