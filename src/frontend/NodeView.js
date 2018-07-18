@@ -132,18 +132,10 @@ class NodeView extends React.Component {
         </TitleBarListItem>
 
         <TitleBarListItem>
-          <Div position="relative">
-            <input
-              type="text"
-              value={this.props.userSearchTerm}
-              onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}
-              placeholder="Filter (name)"
-              onMouseDown={evt => evt.stopPropagation()} />
-
-            <Div position="absolute" right="0" top="0" height="100%" display="flex" alignItems="center">
-              <Cancel style={{ width: '0.6em', height: '0.6em', padding: '1px 4px 0 4px', color: 'rgb(190, 190, 190)' }} />
-            </Div>
-          </Div>
+          <TitleBarInput
+             value={this.props.userSearchTerm}
+             onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}
+             placeholder="Filter (name)" />
         </TitleBarListItem>
       </div>
       <Div overflow="scroll" zIndex="1">
@@ -192,6 +184,40 @@ const TitleDivider = () => <Div
   alignSelf="stretch"
   margin="3px 6px"/>
 TitleDivider.displayName = 'TitleDivider'
+
+const TitleBarInput = props => <Div position="relative">
+  <input
+    type="text"
+    value={props.value}
+    onChange={props.onChange}
+    placeholder={props.placeholder}
+    onMouseDown={evt => evt.stopPropagation()}/>
+
+  <CancelWrap>
+    <Cancel style={{
+      width: '0.6em',
+      height: '0.6em',
+      padding: '1px 4px 0 4px',
+      color: 'rgb(190, 190, 190)'
+    }}/>
+  </CancelWrap>
+</Div>
+TitleBarInput.displayName = 'TitleBarInput'
+TitleBarInput.propTypes = {
+  value: PropTypes.string,
+  placeholder: PropTypes.string,
+
+  onChange: PropTypes.func.isRequired,
+}
+
+const CancelWrap = glamorous.div({
+  position: 'absolute',
+  display: 'flex',
+  alignItems: 'center',
+  right: '0',
+  top: '0',
+  height: '100%',
+})
 
 const userList = css(important({
   display: 'flex',
