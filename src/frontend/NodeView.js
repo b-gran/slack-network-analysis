@@ -12,8 +12,9 @@ import * as Recompose from 'recompose'
 import { css } from 'glamor'
 import glamorous, { Div } from 'glamorous'
 
-import Typography from 'material-ui/Typography'
+import Typography from '@material-ui/core/Typography'
 import Sort from '@material-ui/icons/Sort'
+import Cancel from '@material-ui/icons/Cancel'
 
 import * as MProps from './props'
 import { componentFromStream, important } from './utils'
@@ -131,12 +132,18 @@ class NodeView extends React.Component {
         </TitleBarListItem>
 
         <TitleBarListItem>
-          <input
-            type="text"
-            value={this.props.userSearchTerm}
-            onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}
-            placeholder="Filter (name)"
-            onMouseDown={evt => evt.stopPropagation()} />
+          <Div position="relative">
+            <input
+              type="text"
+              value={this.props.userSearchTerm}
+              onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}
+              placeholder="Filter (name)"
+              onMouseDown={evt => evt.stopPropagation()} />
+
+            <Div position="absolute" right="0" top="0" height="100%" display="flex" alignItems="center">
+              <Cancel style={{ width: '0.6em', height: '0.6em', padding: '1px 4px 0 4px', color: 'rgb(190, 190, 190)' }} />
+            </Div>
+          </Div>
         </TitleBarListItem>
       </div>
       <Div overflow="scroll" zIndex="1">
