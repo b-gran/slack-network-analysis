@@ -3,7 +3,7 @@ import { renderStatic } from 'glamor/server'
 
 import { SheetsRegistry } from 'react-jss/lib/jss';
 import JssProvider from 'react-jss/lib/JssProvider';
-import { createMuiTheme, createGenerateClassName, MuiThemeProvider } from 'material-ui/styles'
+import { createMuiTheme, createGenerateClassName, MuiThemeProvider } from '@material-ui/core/styles'
 
 import { GLAMOR_ID_FIELD } from '../rehydrate'
 

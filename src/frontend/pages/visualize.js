@@ -7,13 +7,13 @@ import Router from 'next/router'
 
 import axios from 'axios'
 
-import Typography from 'material-ui/Typography'
-import Switch from 'material-ui/Switch'
+import Typography from '@material-ui/core/Typography'
+import Switch from '@material-ui/core/Switch'
 import Popover from 'react-popover'
 import Slider from 'rc-slider'
 import style from 'rc-slider/dist/rc-slider.css'
-import Select from 'material-ui/Select'
-import { MenuItem } from 'material-ui/Menu'
+import Select from '@material-ui/core/Select'
+import MenuItem from '@material-ui/core/MenuItem'
 import GPSFixed from '@material-ui/icons/GpsFixed'
 
 import glamorous, { Div } from 'glamorous'
