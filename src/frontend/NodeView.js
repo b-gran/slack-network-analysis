@@ -135,6 +135,7 @@ class NodeView extends React.Component {
           <TitleBarInput
              value={this.props.userSearchTerm}
              onChange={evt => this.props.onChangeUserSearchTerm(evt.target.value)}
+             onCancel={() => this.props.onChangeUserSearchTerm('')}
              placeholder="Filter (name)" />
         </TitleBarListItem>
       </div>
@@ -193,14 +194,11 @@ const TitleBarInput = props => <Div position="relative">
     placeholder={props.placeholder}
     onMouseDown={evt => evt.stopPropagation()}/>
 
-  <CancelWrap>
-    <Cancel style={{
-      width: '0.6em',
-      height: '0.6em',
-      padding: '1px 4px 0 4px',
-      color: 'rgb(190, 190, 190)'
-    }}/>
-  </CancelWrap>
+  {props.value && (
+    <CancelWrap onClick={props.onCancel}>
+      <Cancel className={cancelButton.toString()} />
+    </CancelWrap>
+  )}
 </Div>
 TitleBarInput.displayName = 'TitleBarInput'
 TitleBarInput.propTypes = {
@@ -208,6 +206,7 @@ TitleBarInput.propTypes = {
   placeholder: PropTypes.string,
 
   onChange: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
 }
 
 const CancelWrap = glamorous.div({
@@ -217,6 +216,20 @@ const CancelWrap = glamorous.div({
   right: '0',
   top: '0',
   height: '100%',
+})
+
+const cancelButton = css({
+  ...important({
+    width: '0.6em',
+    height: '0.6em',
+    padding: '1px 4px 0 4px',
+    color: 'rgb(209, 209, 209)',
+    cursor: 'default',
+  }),
+  ':hover': important({
+    color: 'rgb(190, 190, 190)',
+    cursor: 'pointer',
+  }),
 })
 
 const userList = css(important({
