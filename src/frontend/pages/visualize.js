@@ -19,7 +19,7 @@ import GPSFixed from '@material-ui/icons/GpsFixed'
 import glamorous, { Div } from 'glamorous'
 import { css } from 'glamor'
 
-import { action, reaction } from 'mobx'
+import { action, reaction, observe } from 'mobx'
 import { inject, observer, Provider } from 'mobx-react'
 
 import cytoscape from 'cytoscape'
@@ -65,6 +65,9 @@ const DEFAULT_SETTINGS = {
   color: ColorMode.label,
   size: SizeMode.degreeCentrality,
 }
+const validateSettingsAgainstDefault = R.where(
+  R.map(R.always(R.complement(R.isNil)), DEFAULT_SETTINGS),
+)
 
 const loadInitialData = action(graphId => {
   // Load settings in here so that the server and client both do an initial render
@@ -97,6 +100,18 @@ function getSettingsStream (mobxState) {
   })
 }
 
+// Given a mobx observable, return an Rx.Observable that emits an event each time the
+// mobx observable is changed.
+// The event values are the current value of the observable
+function getMobxUpdateStream (mobxObservable, property) {
+  return new Rx.Observable(observer => {
+    const dispose = R.isNil(property)
+      ? observe(mobxObservable, update => observer.next(update.object))
+      : observe(mobxObservable, property, update => observer.next(update.object))
+    return () => dispose()
+  })
+}
+
 const LOCAL_STORAGE_ENABLED = typeof localStorage === 'object'
 const LOCAL_STORAGE_SETTINGS_KEY = 'LOCAL_STORAGE_SETTINGS_KEY'
 function Effect_SerialiseSettingsToLocalStorage ($settings) {
@@ -113,7 +128,7 @@ function Effect_SerialiseSettingsToLocalStorage ($settings) {
   })
 }
 
-function loadSettingsFromLocalStorage () {
+function loadSettingsFromLocalStorage (isValidSettings = validateSettingsAgainstDefault) {
   if (!LOCAL_STORAGE_ENABLED) {
     return undefined
   }
@@ -124,7 +139,8 @@ function loadSettingsFromLocalStorage () {
   }
 
   try {
-    return JSON.parse(storedSettings)
+    const settings = JSON.parse(storedSettings)
+    return isValidSettings(settings) ? settings : undefined
   } catch (err) {
     console.warn('Unable to load settings from local storage', err)
     return undefined
@@ -235,7 +251,7 @@ const state = mobxHmrObservable(module)({
   },
 })
 
-const $settings = getSettingsStream(state)
+const $settings = getMobxUpdateStream(state, 'settings')
 Effect_SerialiseSettingsToLocalStorage($settings)
 
 class Visualize extends React.Component {
