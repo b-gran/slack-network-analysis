@@ -57,7 +57,6 @@ class NodeView extends React.Component {
 
   dom = {
     titleBar: null,
-    content: null,
   }
 
   componentDidMount () {
@@ -140,7 +139,7 @@ class NodeView extends React.Component {
         </TitleBarListItem>
       </div>
       <Div overflow="scroll" zIndex="1">
-        <div ref={ref => this.dom.content = ref} className={userList.toString()}>
+        <div className={userList.toString()}>
         {
           this.props.visibleUsers
             .map(user => <User
