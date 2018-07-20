@@ -19,7 +19,7 @@ import GPSFixed from '@material-ui/icons/GpsFixed'
 import glamorous, { Div } from 'glamorous'
 import { css } from 'glamor'
 
-import { action } from 'mobx'
+import { action, reaction } from 'mobx'
 import { inject, observer, Provider } from 'mobx-react'
 
 import cytoscape from 'cytoscape'
@@ -28,7 +28,7 @@ import cola from 'cytoscape-cola'
 import { mobxHmrObservable, SERVER_URL } from '../config'
 import * as MProps from '../props'
 import { important, componentFromStream } from '../utils'
-import { ColorMode, SizeMode, ViewMode, ViewModePropType } from '../NetworkSettings'
+import { ColorMode, SizeMode, ViewMode } from '../NetworkSettings'
 
 import * as R from 'ramda'
 import * as Rx from 'rxjs'
@@ -55,6 +55,84 @@ const DEFAULT_BOTTOM_BAR_HEIGHT_PX = typeof window === 'object' && window.innerH
   ? ((window.innerHeight * 0.1) | 0)
   : 200
 
+const DEFAULT_SETTINGS = {
+  maxEdgeWeight: 0.6,
+  edgeLength: 2000,
+  animation: false,
+
+  mode: ViewMode.label,
+
+  color: ColorMode.label,
+  size: SizeMode.degreeCentrality,
+}
+
+const loadInitialData = action(graphId => {
+  // Load settings in here so that the server and client both do an initial render
+  // with the default settings.
+  state.settings = loadSettingsFromLocalStorage() || state.settings
+  return axios.get(`${SERVER_URL}/graphs/${graphId}`)
+    .then(res => {
+      const { graph, nodes, edges, users } = res.data
+      state.graph = graph
+      state.nodesById = nodes
+      state.edgesById = edges
+      state.usersById = users
+    }).catch(err => state.error = err)
+})
+
+const updateSettings = action(partialSettingsUpdate =>
+  state.settings = R.merge(
+    state.settings,
+    partialSettingsUpdate
+  )
+)
+
+function getSettingsStream (mobxState) {
+  return new Rx.Observable(observer => {
+    reaction(
+      () => mobxState.settings,
+      settings => observer.next(settings),
+    )
+    return () => {}
+  })
+}
+
+const LOCAL_STORAGE_ENABLED = typeof localStorage === 'object'
+const LOCAL_STORAGE_SETTINGS_KEY = 'LOCAL_STORAGE_SETTINGS_KEY'
+function Effect_SerialiseSettingsToLocalStorage ($settings) {
+  if (!LOCAL_STORAGE_ENABLED) {
+    return
+  }
+
+  return $settings.subscribe(settings => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_SETTINGS_KEY, JSON.stringify(settings))
+    } catch (err) {
+      console.warn('Unable to serialise settings', settings)
+    }
+  })
+}
+
+function loadSettingsFromLocalStorage () {
+  if (!LOCAL_STORAGE_ENABLED) {
+    return undefined
+  }
+
+  const storedSettings = localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY)
+  if (storedSettings === null) {
+    return undefined
+  }
+
+  try {
+    return JSON.parse(storedSettings)
+  } catch (err) {
+    console.warn('Unable to load settings from local storage', err)
+    return undefined
+  }
+}
+
+// TODO: fucks up navigation because the module gets cached and this variable isn't re-evaluated
+// on subsequent page loads.
 const state = mobxHmrObservable(module)({
   error: undefined,
   graph: undefined,
@@ -62,17 +140,7 @@ const state = mobxHmrObservable(module)({
   edgesById: undefined,
   usersById: undefined,
 
-  settings: {
-    maxEdgeWeight: 0.6,
-    edgeLength: 2000,
-    animation: false,
-
-    mode: ViewMode.label,
-
-    color: ColorMode.label,
-    size: SizeMode.degreeCentrality,
-  },
-
+  settings: DEFAULT_SETTINGS,
   bottomBarHeightPx: DEFAULT_BOTTOM_BAR_HEIGHT_PX,
 
   $selectUser: new Rx.Subject(),
@@ -167,23 +235,8 @@ const state = mobxHmrObservable(module)({
   },
 })
 
-const loadInitialData = action(graphId => axios.get(`${SERVER_URL}/graphs/${graphId}`)
-  .then(res => {
-    const { graph, nodes, edges, users } = res.data
-    state.graph = graph
-    state.nodesById = nodes
-    state.edgesById = edges
-    state.usersById = users
-  })
-  .catch(err => state.error = err)
-)
-
-const updateSettings = action(partialSettingsUpdate =>
-  state.settings = R.merge(
-    state.settings,
-    partialSettingsUpdate
-  )
-)
+const $settings = getSettingsStream(state)
+Effect_SerialiseSettingsToLocalStorage($settings)
 
 class Visualize extends React.Component {
   static displayName = 'Visualize'
