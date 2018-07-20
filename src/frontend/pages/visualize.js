@@ -90,16 +90,6 @@ const updateSettings = action(partialSettingsUpdate =>
   )
 )
 
-function getSettingsStream (mobxState) {
-  return new Rx.Observable(observer => {
-    reaction(
-      () => mobxState.settings,
-      settings => observer.next(settings),
-    )
-    return () => {}
-  })
-}
-
 // Given a mobx observable, return an Rx.Observable that emits an event each time the
 // mobx observable is changed.
 // The event values are the current value of the observable
