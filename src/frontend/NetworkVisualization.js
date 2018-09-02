@@ -28,6 +28,7 @@ import ZoomOutMap from '@material-ui/icons/ZoomOutMapOutlined'
 
 import { NodePrimaryColor, NodeSecondaryColor } from './NetworkColoring'
 import GraphColorerByMode from './NetworkColoring'
+import { tsne } from '../vector'
 
 const CygraphNode = PropTypes.shape({
   group: PropTypes.oneOf(['nodes']).isRequired,
@@ -146,6 +147,8 @@ class Network extends React.Component {
 
     if (this.props.settings.animation) {
       layout.run()
+    } else {
+      tsne(cyGraph.nodes(), 50, [0, 0])
     }
 
     function animateElement (element, frames) {

@@ -62,15 +62,31 @@ function sign (x) {
       0;
 }
 
-export function tsne (nodes) {
+// adjustmentFactor linearly scales the position of the nodes to spread them out for visualisation
+// minimumCoordinates [minX, minY] translates the positions so they're greater than these values
+export function tsne (nodes, adjustmentFactor = 500, minimumCoordinates) {
   const tsneState = state(nodes)
 
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 1000; i++) {
     step(tsneState)
   }
 
+  const translateBy = [0, 0]
+  if (minimumCoordinates) {
+    const minimumValues = [Infinity, Infinity]
+    for (const [x, y] of tsneState.Y) {
+      minimumValues[0] = Math.min(x, minimumValues[0])
+      minimumValues[1] = Math.min(y, minimumValues[1])
+    }
+    translateBy[0] = minimumCoordinates[0] - minimumValues[0]
+    translateBy[1] = minimumCoordinates[1] - minimumValues[1]
+  }
+
   for (let i = 0; i < tsneState.Y.length; i++) {
-    const [x, y] = tsneState.Y[i]
+    const adjustedPositions = adjust(tsneState.Y[i])
+    tsneState.Y[i] = adjustedPositions
+    const [x, y] = adjustedPositions
+
     const node = tsneState.nodes.eq(i)
     node.position({ x, y })
   }
@@ -78,6 +94,13 @@ export function tsne (nodes) {
   return {
     nodes: tsneState.nodes,
     positions: tsneState.Y,
+  }
+
+  function adjust (initialPosition) {
+    return [
+      initialPosition[0] * adjustmentFactor + translateBy[0],
+      initialPosition[1] * adjustmentFactor + translateBy[1],
+    ]
   }
 }
 
