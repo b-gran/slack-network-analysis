@@ -1,4 +1,9 @@
 .idea
-node_modules/
 *.next
 .env
+*.swp
+
+node_modules/
+dist/
+
+/test-*
