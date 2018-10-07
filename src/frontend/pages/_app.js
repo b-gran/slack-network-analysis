@@ -1,5 +1,6 @@
 import App from 'next/app'
 import React from 'react'
+import './hack.css'
 
 export default class MyApp extends App {
   componentDidMount () {

@@ -24,7 +24,8 @@ import FormLabel from '@material-ui/core/FormLabel'
 import green from '@material-ui/core/colors/green'
 import { createMuiTheme } from '@material-ui/core/styles'
 
-import { DeviceHub, OpenInNew } from '@material-ui/icons'
+import DeviceHub from '@material-ui/icons/DeviceHub'
+import OpenInNew from '@material-ui/icons/OpenInNew'
 
 import { Div, Span } from 'glamorous'
 
@@ -188,7 +189,7 @@ const Team = observer(class _Team extends React.Component {
                         },
                       }
                       return (
-                        <ListItem key={graph.description}>
+                        <ListItem key={graph._id}>
                           <ListItemText
                             primary={<Typography>{date}</Typography>}
                             secondary={graph.description}/>
