@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "export": "./build.sh",
     "restart": "docker-compose exec server /bin/sh -c 'kill -s SIGHUP 1'",
     "test": "jest",
     "serve:frontend": "next dev src/frontend -p $FRONTEND_PORT",
