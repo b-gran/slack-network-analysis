@@ -5,8 +5,6 @@ import PropTypes from 'prop-types'
 import Head from 'next/head'
 import Router from 'next/router'
 
-import axios from 'axios'
-
 import Typography from '@material-ui/core/Typography'
 import Switch from '@material-ui/core/Switch'
 import Popover from 'react-popover'
@@ -19,16 +17,17 @@ import GPSFixed from '@material-ui/icons/GpsFixed'
 import glamorous, { Div } from 'glamorous'
 import { css } from 'glamor'
 
-import { action, reaction, observe } from 'mobx'
+import { action, observe } from 'mobx'
 import { inject, observer, Provider } from 'mobx-react'
 
 import cytoscape from 'cytoscape'
 import cola from 'cytoscape-cola'
 
-import { mobxHmrObservable, SERVER_URL } from '../config'
+import { mobxHmrObservable } from '../config'
 import * as MProps from '../props'
 import { important, componentFromStream } from '../utils'
 import { ColorMode, SizeMode, ViewMode } from '../NetworkSettings'
+import data from '../DataSource'
 
 import * as R from 'ramda'
 import * as Rx from 'rxjs'
@@ -73,9 +72,9 @@ const loadInitialData = action(graphId => {
   // Load settings in here so that the server and client both do an initial render
   // with the default settings.
   state.settings = loadSettingsFromLocalStorage() || state.settings
-  return axios.get(`${SERVER_URL}/graphs/${graphId}`)
+  return data.load(graphId)
     .then(res => {
-      const { graph, nodes, edges, users } = res.data
+      const { graph, nodes, edges, users } = res
       state.graph = graph
       state.nodesById = nodes
       state.edgesById = edges
