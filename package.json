@@ -4,7 +4,6 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "export": "./build.sh",
     "export:static": "./build_static.sh",
     "restart": "docker-compose exec server /bin/sh -c 'kill -s SIGHUP 1'",
     "test": "jest",
