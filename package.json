@@ -21,9 +21,14 @@
   },
   "homepage": "https://github.com/b-gran/slack-network-analysis#readme",
   "dependencies": {
-    "@material-ui/core": "^1.4.0",
+    "@material-ui/core": "^3.2.0",
     "@material-ui/icons": "^2.0.0-beta.1",
+    "@types/next": "^7.0.1",
+    "@types/ramda": "^0.25.39",
+    "@types/webpack": "^4.4.16",
+    "@types/webpack-env": "^1.13.6",
     "@zeit/next-css": "^1.0.1",
+    "@zeit/next-typescript": "^1.1.1",
     "axios": "^0.18.0",
     "babel-core": "^7.0.0-bridge.0",
     "babel-jest": "^23.6.0",
@@ -50,5 +55,8 @@
     "recompose": "^0.27.0",
     "rxjs": "^6.1.0",
     "yargs": "^12.0.2"
+  },
+  "devDependencies": {
+    "typescript": "^3.1.2"
   }
 }

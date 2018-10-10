@@ -1,6 +1,8 @@
 const path = require('path')
 const fs = require('fs')
 const withCSS = require('@zeit/next-css')
+const withTypescript = require('@zeit/next-typescript')
+const { pipe } = require('ramda')
 
 const staticData = (() => {
   const staticDataSource = process.env.STATIC_DATA_SOURCE
@@ -22,7 +24,7 @@ const staticData = (() => {
 })()
 
 
-module.exports = withCSS({
+module.exports = pipe(withTypescript, withCSS)({
   dir: path.join(__dirname, 'frontend'),
   dev: process.env.NODE_ENV !== 'production',
   publicRuntimeConfig: {
