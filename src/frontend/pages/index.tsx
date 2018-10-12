@@ -1,7 +1,6 @@
 import '../rehydrate'
 
 import React from 'react'
-import PropTypes from 'prop-types'
 import Head from 'next/head'
 import Link from 'next/link'
 
@@ -21,16 +20,28 @@ import TextField from '@material-ui/core/TextField'
 import { Div } from 'glamorous'
 import { css } from 'glamor'
 
-import { observable, action } from 'mobx'
-import { PropTypes as MobxPropTypes, observer, inject, Provider } from 'mobx-react'
+import { observable, action, IObservableArray, IObservableObject } from 'mobx'
+import { observer, Provider } from 'mobx-react'
+import { inject } from '../inject'
 
 import { SERVER_URL } from '../config'
 import * as MProps from '../props'
+import { error, SlackAuthResponse, Team } from '../props'
 
 // Resets
 css.global('body', { margin: 0 })
 
-const state = (module.hot && module.hot.data && module.hot.data.state) ?
+type State = {
+  teams: IObservableArray<MProps.Team>,
+  isLoaded?: boolean,
+  error?: error,
+  showAddTeamModal?: boolean,
+  addTeamModal: {
+    token: string
+  }
+}
+
+const state: State & IObservableObject = (module.hot && module.hot.data && module.hot.data.state) ?
   module.hot.data.state :
   observable({
     teams: [],
@@ -42,7 +53,7 @@ const state = (module.hot && module.hot.data && module.hot.data.state) ?
     }
   })
 
-const getTeamData = token => axios({
+const getTeamData = (token: string) => axios({
   url: `${SERVER_URL}/slack/getTeamData`,
   params: {
     token: token,
@@ -50,7 +61,7 @@ const getTeamData = token => axios({
 })
   .then(res => res.data)
 
-const createTeam = (token, authData) => axios.post(
+const createTeam = (token: string, authData: SlackAuthResponse) => axios.post(
   `${SERVER_URL}/teams`,
   {
     token: token,
@@ -72,7 +83,7 @@ const loadTeams = action(() => axios.get(`${SERVER_URL}/teams`)
 
 const showAddTeamModal = action(() => state.showAddTeamModal = true)
 const closeAddTeamModal = action(() => state.showAddTeamModal = false)
-const setToken = action(token => state.addTeamModal.token = token)
+const setToken = action((token: string) => state.addTeamModal.token = token)
 
 const addTeam = action(() => {
   getTeamData(state.addTeamModal.token)
@@ -83,26 +94,25 @@ const addTeam = action(() => {
     })
 })
 
-const Index = observer(class _Index extends React.Component {
+type IndexProps = {
+  teams: IObservableArray<Team>,
+  isLoaded?: boolean,
+
+  showAddTeamModal?: boolean,
+  addTeamModal: {
+    token: string,
+  },
+
+  error?: error,
+}
+const Index = observer(class _Index extends React.Component<IndexProps> {
   static displayName = 'Index'
 
-  static propTypes = {
-    teams: MobxPropTypes.observableArrayOf(MProps.Team).isRequired,
-    isLoaded: PropTypes.bool,
-
-    showAddTeamModal: PropTypes.bool,
-    addTeamModal: PropTypes.shape({
-      token: PropTypes.string.isRequired,
-    }).isRequired,
-
-    error: MProps.error,
-  }
-
-  componentDidMount () {
+  componentDidMount() {
     return loadTeams()
   }
-  
-  render () {
+
+  render() {
     const token = this.props.addTeamModal.token
     const isTokenValid = !this.props.teams.some(team => team.token === token)
 
@@ -147,7 +157,7 @@ const Index = observer(class _Index extends React.Component {
 
             </React.Fragment>}
 
-            <Modal open={this.props.showAddTeamModal} onClose={() => closeAddTeamModal()}>
+            <Modal open={Boolean(this.props.showAddTeamModal)} onClose={() => closeAddTeamModal()}>
               <Div width="300px" position="absolute" top="50%" left="50%">
                 <Card>
                   <CardContent>
@@ -170,7 +180,7 @@ const Index = observer(class _Index extends React.Component {
                     )}
 
                     <Div padding="10px 0">
-                      <Divider />
+                      <Divider/>
                     </Div>
 
                     <Button variant="raised" color="primary" onClick={() => {
@@ -187,7 +197,7 @@ const Index = observer(class _Index extends React.Component {
 
             {this.props.error && (
               <Div backgroundColor="#ff7474">
-                <Typography>{ JSON.stringify(this.props.error, null, ' ') }</Typography>
+                <Typography>{JSON.stringify(this.props.error, null, ' ')}</Typography>
               </Div>
             )}
           </Card>
@@ -197,11 +207,11 @@ const Index = observer(class _Index extends React.Component {
   }
 })
 
-const WIndex = inject(stores => ({ ...stores.state }))(Index)
+const WIndex = inject((stores: { state: State }) => ({ ...stores.state } as State))(Index)
 
 export default () => (
   <Provider state={state}>
-    <WIndex />
+    <WIndex/>
   </Provider>
 )
 
