@@ -1,7 +1,6 @@
 import * as React from "react";
 import { inject as mobxInject } from "mobx-react";
-
-type Omit <T, K> = Pick<T, Exclude<keyof T, K>>
+import { Omit } from './utils'
 
 export function inject<D, Stores>(
   mapStoreToProps: (stores: Stores) => D
