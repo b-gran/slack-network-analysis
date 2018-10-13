@@ -25,6 +25,7 @@
     "@material-ui/icons": "^2.0.0-beta.1",
     "@types/next": "^7.0.1",
     "@types/ramda": "^0.25.39",
+    "@types/recompose": "^0.27.0",
     "@types/webpack": "^4.4.16",
     "@types/webpack-env": "^1.13.6",
     "@zeit/next-css": "^1.0.1",
